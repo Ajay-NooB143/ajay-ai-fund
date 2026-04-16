@@ -16,3 +16,4 @@ yfinance
 transformers
 torch
 python-binance
+streamlit
