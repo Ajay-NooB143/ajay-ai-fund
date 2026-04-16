@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+redis
+pydantic
+MetaTrader5
+python-dotenv
+requests
