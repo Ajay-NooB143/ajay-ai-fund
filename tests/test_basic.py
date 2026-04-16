@@ -8,6 +8,9 @@ def test_imports():
     import app.execution
     import app.risk
     assert app is not None
+    assert app.bot is not None
+    assert app.execution is not None
+    assert app.risk is not None
 
 
 def test_project_structure():
