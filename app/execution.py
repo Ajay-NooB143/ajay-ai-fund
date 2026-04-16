@@ -2,12 +2,27 @@ import os
 
 from binance.client import Client
 
-client = Client(os.getenv("BINANCE_API_KEY"), os.getenv("BINANCE_SECRET"))
+_client = None
 
 SAFE_MODE = True
 
 
+def _get_client():
+    global _client
+    if _client is None:
+        api_key = os.getenv("BINANCE_API_KEY")
+        api_secret = os.getenv("BINANCE_SECRET")
+        if not api_key or not api_secret:
+            raise RuntimeError(
+                "BINANCE_API_KEY and BINANCE_SECRET "
+                "environment variables must be set"
+            )
+        _client = Client(api_key, api_secret)
+    return _client
+
+
 def execute_trade(symbol, side):
+    client = _get_client()
 
     price = float(client.get_symbol_ticker(symbol=symbol)["price"])
 
