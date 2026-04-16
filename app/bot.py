@@ -1,50 +1,32 @@
-import argparse
-import sys
-import os
+import time
 
-# Allow running from the repo root: python app/bot.py
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from ai.rl_agent import RLAgent
+from ai.orderbook import predict_orderflow
+from app.execution import execute_trade
 
-from agents.forecaster.data_fetcher import get_stock_data  # noqa: E402
-from agents.sentiment.sentiment_agent import analyze_sentiment  # noqa: E402
-from agents.strategy import trading_decision  # noqa: E402
-from execution.trade_executor import execute_trade  # noqa: E402
+TRADING_SYMBOL = "BTCUSDT"
+TRADING_LOOP_INTERVAL_SECONDS = 10
 
-
-def run_bot(symbol: str, news: str) -> None:
-    print(f"📡 Fetching market data for {symbol}...")
-    data = get_stock_data(symbol)
-    print("📊 Market Data:\n", data)
-
-    print("\n🧠 Analyzing sentiment...")
-    sentiment = analyze_sentiment(news)
-    print("Sentiment:", sentiment)
-
-    print("\n📈 Making trading decision...")
-    decision = trading_decision(sentiment)
-    print("Decision:", decision)
-
-    print("\n💰 Executing trade...")
-    result = execute_trade(decision)
-    print("Trade Result:", result)
+rl = RLAgent()
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="AI Trading Bot")
-    parser.add_argument(
-        "--symbol",
-        default="AAPL",
-        help="Stock/asset symbol to trade (default: AAPL)",
-    )
-    parser.add_argument(
-        "--news",
-        default="The market is performing steadily today.",
-        help="News headline used for sentiment analysis",
-    )
-    args = parser.parse_args()
+def run_bot():
+    print("🚀 BOT RUNNING")
 
-    run_bot(symbol=args.symbol, news=args.news)
+    while True:
+        symbol = TRADING_SYMBOL
 
+        # TODO: replace placeholder observation with actual market state data
+        rl_signal = rl.predict([0, 0, 0, 0, 0])
+        # TODO: replace placeholder orderbook with actual Binance depth data
+        ob_signal = predict_orderflow({
+            "bids": [["0", "1"]],
+            "asks": [["0", "1"]]
+        })
 
-if __name__ == "__main__":
-    main()
+        signal = rl_signal if rl_signal == ob_signal else "HOLD"
+
+        if signal != "HOLD":
+            execute_trade(symbol, signal)
+
+        time.sleep(TRADING_LOOP_INTERVAL_SECONDS)

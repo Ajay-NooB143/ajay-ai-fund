@@ -1,19 +1,9 @@
-# data handling
-numpy
-pandas
-
-# packaging
-setuptools>=41.4.0
-wheel>=0.33.6
-
-# historical data
-tushare
-pandas
-numpy
-transformers
-torch
-yfinance
-transformers
-torch
 python-binance
+pandas
+numpy
+xgboost
 streamlit
+flask
+python-dotenv
+stable-baselines3
+gym
