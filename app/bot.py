@@ -16,7 +16,7 @@ def run_bot(symbol: str, news: str) -> None:
     data = get_stock_data(symbol)
     print("📊 Market Data:\n", data)
 
-    print("\n🧠 Analysing sentiment...")
+    print("\n🧠 Analyzing sentiment...")
     sentiment = analyze_sentiment(news)
     print("Sentiment:", sentiment)
 
