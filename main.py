@@ -3,6 +3,7 @@ from agents.sentiment.sentiment_agent import analyze_sentiment
 from agents.strategy import trading_decision
 from execution.trade_executor import execute_trade
 
+
 def main():
     data = get_stock_data("AAPL")
     print("Market Data:", data)
@@ -17,6 +18,7 @@ def main():
 
     result = execute_trade(decision)
     print("Trade Result:", result)
+
 
 if __name__ == "__main__":
     main()
