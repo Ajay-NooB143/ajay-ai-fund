@@ -1,0 +1,3 @@
+[flake8]
+exclude =
+    agents/benchmark/__init__.py

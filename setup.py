@@ -3,8 +3,9 @@ from setuptools import setup, find_packages
 # Read requirements.txt, ignore comments
 try:
     with open("requirements.txt", "r") as f:
-        REQUIRES = [line.split('#', 1)[0].strip() for line in f if line.strip()]
-except:
+        REQUIRES = [line.split('#', 1)[0].strip() for line in f
+                    if line.strip()]
+except Exception:
     print("'requirements.txt' not found!")
     REQUIRES = list()
 

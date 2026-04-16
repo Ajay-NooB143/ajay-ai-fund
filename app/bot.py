@@ -5,10 +5,10 @@ import os
 # Allow running from the repo root: python app/bot.py
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from agents.forecaster.data_fetcher import get_stock_data
-from agents.sentiment.sentiment_agent import analyze_sentiment
-from agents.strategy import trading_decision
-from execution.trade_executor import execute_trade
+from agents.forecaster.data_fetcher import get_stock_data  # noqa: E402
+from agents.sentiment.sentiment_agent import analyze_sentiment  # noqa: E402
+from agents.strategy import trading_decision  # noqa: E402
+from execution.trade_executor import execute_trade  # noqa: E402
 
 
 def run_bot(symbol: str, news: str) -> None:
