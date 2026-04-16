@@ -77,7 +77,10 @@ function Dashboard() {
               step="0.01"
               value={form.volume}
               onChange={(e) =>
-                setForm({ ...form, volume: parseFloat(e.target.value) })
+                setForm({
+                  ...form,
+                  volume: parseFloat(e.target.value) || 0.01,
+                })
               }
             />
           </label>

@@ -39,6 +39,8 @@ class RiskManager:
 
     def is_daily_limit_breached(self, account_balance: float) -> bool:
         """Check whether the daily loss limit has been exceeded."""
+        if account_balance <= 0:
+            return True
         pct = self.daily_loss / account_balance * 100
         return pct > self.max_daily_loss_pct
 
