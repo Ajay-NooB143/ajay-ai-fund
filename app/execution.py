@@ -14,7 +14,7 @@ def execute_trade(symbol, side):
     qty = 0.001
 
     if SAFE_MODE:
-        print(f"[SAFE] {side} {symbol}")
+        print(f"[SAFE] {side} {symbol} @ {price}")
         return
 
     if side == "BUY":
@@ -22,4 +22,4 @@ def execute_trade(symbol, side):
     else:
         client.order_market_sell(symbol=symbol, quantity=qty)
 
-    print(f"EXECUTED {side}")
+    print(f"EXECUTED {side} {symbol} @ {price}")
