@@ -1,7 +1,7 @@
 def trading_decision(sentiment):
-    if sentiment == "positive":
+    if sentiment == "POSITIVE":
         return "BUY"
-    elif sentiment == "negative":
+    elif sentiment == "NEGATIVE":
         return "SELL"
     else:
         return "HOLD"
