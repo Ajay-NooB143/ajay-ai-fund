@@ -1,4 +1,5 @@
 import os
+import threading
 
 from binance.client import Client
 
@@ -6,12 +7,15 @@ API_KEY = os.environ.get("BINANCE_API_KEY", "")
 API_SECRET = os.environ.get("BINANCE_API_SECRET", "")
 
 _client = None
+_client_lock = threading.Lock()
 
 
 def _get_client():
     global _client
     if _client is None:
-        _client = Client(API_KEY, API_SECRET)
+        with _client_lock:
+            if _client is None:
+                _client = Client(API_KEY, API_SECRET)
     return _client
 
 
