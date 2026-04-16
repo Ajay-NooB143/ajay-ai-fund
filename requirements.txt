@@ -13,3 +13,5 @@ numpy
 transformers
 torch
 yfinance
+transformers
+torch
