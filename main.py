@@ -20,3 +20,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+from agents.trading.binance_client import place_order
+
+# After decision
+if decision == "BUY":
+    order = place_order(side="BUY")
+    print("Order placed:", order)
