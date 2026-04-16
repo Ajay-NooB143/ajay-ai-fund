@@ -8,3 +8,7 @@ wheel>=0.33.6
 
 # historical data
 tushare
+pandas
+numpy
+transformers
+torch
