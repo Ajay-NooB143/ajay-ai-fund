@@ -1,13 +1,10 @@
 import time
 
-from ai.rl_agent import RLAgent
-from ai.orderbook import predict_orderflow
+from agents.meta_brain import meta_brain
 from app.execution import execute_trade
 
 TRADING_SYMBOL = "BTCUSDT"
 TRADING_LOOP_INTERVAL_SECONDS = 10
-
-rl = RLAgent()
 
 
 def run_bot():
@@ -16,15 +13,27 @@ def run_bot():
     while True:
         symbol = TRADING_SYMBOL
 
-        # TODO: replace placeholder observation with actual market state data
-        rl_signal = rl.predict([0, 0, 0, 0, 0])
-        # TODO: replace placeholder orderbook with actual Binance depth data
-        ob_signal = predict_orderflow({
-            "bids": [["0", "1"]],
-            "asks": [["0", "1"]]
-        })
+        # TODO: replace placeholder state with real market data fetched from
+        # the exchange.  All keys below are required by the meta-brain.
+        state = {
+            "close": 0.0,
+            "ema": 0.0,
+            "ema_prev": 0.0,
+            "adx": 0.0,
+            "atr": 0.0,
+            "atr_mean": 0.0,
+            "rsi": 50.0,
+        }
+        # TODO: replace placeholder next_price with the real next-bar price
+        # (e.g. from a live feed) once real market data is wired in.
+        next_price = state["close"]
 
-        signal = rl_signal if rl_signal == ob_signal else "HOLD"
+        # Guard: skip trading until real market data is available.
+        if state["close"] == 0.0:
+            time.sleep(TRADING_LOOP_INTERVAL_SECONDS)
+            continue
+
+        signal = meta_brain(state, next_price)
 
         if signal != "HOLD":
             execute_trade(symbol, signal)
