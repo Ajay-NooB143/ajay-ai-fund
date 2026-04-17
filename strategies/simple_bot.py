@@ -10,6 +10,7 @@ import yfinance as yf
 LIVE_TRADING = False  # Turn True only when ready
 SYMBOL = "BTCUSDT"
 RISK_PERCENT = 0.01
+PRICE_THRESHOLD = 50000
 
 API_KEY = os.getenv("BINANCE_API_KEY")
 API_SECRET = os.getenv("BINANCE_API_SECRET")
@@ -22,6 +23,8 @@ client = Client(API_KEY, API_SECRET)
 # =========================
 def get_price():
     data = yf.download("BTC-USD", period="1d", interval="1m")
+    if data is None or data.empty:
+        raise RuntimeError("Failed to fetch market data from yfinance")
     return float(data["Close"].iloc[-1])
 
 
@@ -29,7 +32,7 @@ def get_price():
 # STRATEGY (simple but real)
 # =========================
 def generate_signal(price):
-    if price > 50000:
+    if price > PRICE_THRESHOLD:
         return "BUY"
     else:
         return "SELL"
@@ -90,13 +93,21 @@ def run():
     while True:
         print("\nRunning cycle...")
 
-        price = get_price()
+        try:
+            price = get_price()
+        except Exception as e:
+            print("Error fetching price:", e)
+            time.sleep(60)
+            continue
         print("Price:", price)
 
         signal = generate_signal(price)
         print("Signal:", signal)
 
-        balance = get_balance()
+        if LIVE_TRADING:
+            balance = get_balance()
+        else:
+            balance = 10000.0  # simulated balance
         print("Balance:", balance)
 
         qty = calculate_quantity(balance, price)
