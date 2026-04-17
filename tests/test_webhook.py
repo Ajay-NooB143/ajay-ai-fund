@@ -139,7 +139,7 @@ def test_webhook_blocked_by_risk(monkeypatch):
 
     from app.risk import reset_loss, update_loss
 
-    reset_loss()
+    reset_loss()  # ensure clean state before this test
     update_loss(-10.0)
 
     webhook_main = _reload_webhook()
@@ -148,7 +148,7 @@ def test_webhook_blocked_by_risk(monkeypatch):
     assert response.status_code == 200
     assert response.json()["status"] == "risk blocked"
 
-    reset_loss()
+    reset_loss()  # restore clean state for subsequent tests
 
 
 def test_webhook_executes_trade(monkeypatch):

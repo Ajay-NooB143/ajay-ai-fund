@@ -1,6 +1,7 @@
 import random
 
 # Fraction of valid signals rejected to avoid over-trading.
+# A signal is suppressed when the random draw falls *below* this threshold.
 # Replace with a trained model threshold once XGBoost is wired in.
 REJECTION_THRESHOLD = 0.3
 
@@ -25,7 +26,8 @@ def ai_decision(signal: str) -> str:
     if signal not in ("BUY", "SELL"):
         return "HOLD"
 
-    if random.random() > REJECTION_THRESHOLD:
-        return signal
+    # Reject the signal when the random draw is below the rejection threshold.
+    if random.random() < REJECTION_THRESHOLD:
+        return "HOLD"
 
-    return "HOLD"
+    return signal

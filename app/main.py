@@ -17,6 +17,8 @@ BOT_ACTIVE = os.getenv("BOT_ACTIVE", "true").lower() not in ("false", "0", "no")
 class WebhookRequest(BaseModel):
     symbol: str = "BTCUSDT"
     action: str
+    # Optional price field forwarded by TradingView alerts; reserved for
+    # future use (e.g. limit-order placement or logging).
     price: float | None = None
 
 
