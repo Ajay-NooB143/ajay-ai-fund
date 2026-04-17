@@ -138,6 +138,82 @@ def place_order(symbol: str, lot: float, order_type: str) -> dict:
 # Hedge execution
 # ---------------------------------------------------------------------------
 
+def close_position(position) -> dict:
+    """Close an open MT5 position by sending an opposite market order.
+
+    Parameters
+    ----------
+    position : MT5 position object
+        An open position retrieved via ``mt5.positions_get()``.
+        Must expose ``.type``, ``.symbol``, ``.volume``, and ``.ticket``.
+
+    Returns
+    -------
+    dict with the order result or an error description.
+    """
+    if mt5 is None:
+        return {"status": "error", "reason": "MetaTrader5 not available"}
+
+    # Reverse the direction: close a BUY (type 0) with SELL, and vice-versa.
+    order_type = mt5.ORDER_TYPE_SELL if position.type == 0 else mt5.ORDER_TYPE_BUY
+
+    tick = mt5.symbol_info_tick(position.symbol)
+    if tick is None:
+        return {"status": "error", "reason": f"No tick data for {position.symbol}"}
+
+    price = tick.bid if position.type == 0 else tick.ask
+
+    request = {
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": position.symbol,
+        "volume": position.volume,
+        "type": order_type,
+        "position": position.ticket,
+        "price": price,
+        "deviation": 10,
+        "magic": HEDGE_MAGIC,
+        "comment": "HEDGE EXIT",
+    }
+
+    result = mt5.order_send(request)
+    if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+        error = result.comment if result else "unknown error"
+        return {"status": "error", "reason": error}
+
+    return {
+        "status": "closed",
+        "ticket": position.ticket,
+        "price": result.price,
+        "volume": result.volume,
+    }
+
+
+def get_open_positions(symbol: str | None = None) -> list:
+    """Return open positions filtered by ``HEDGE_MAGIC``.
+
+    Parameters
+    ----------
+    symbol : str, optional
+        When given, only positions for that symbol are returned.
+
+    Returns
+    -------
+    list of position objects (may be empty).
+    """
+    if mt5 is None:
+        return []
+
+    if symbol:
+        positions = mt5.positions_get(symbol=symbol)
+    else:
+        positions = mt5.positions_get()
+
+    if positions is None:
+        return []
+
+    return [p for p in positions if p.magic == HEDGE_MAGIC]
+
+
 def hedge_trade(symbol: str, lot: float) -> dict:
     """Execute a hedge: simultaneous BUY and SELL at the same volume.
 
