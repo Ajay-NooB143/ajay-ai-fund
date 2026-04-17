@@ -5,6 +5,9 @@ yfinance
 xgboost
 streamlit
 flask
+fastapi
+uvicorn[standard]
+requests
 python-dotenv
 stable-baselines3
 gym
