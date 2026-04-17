@@ -7,3 +7,4 @@ flask
 python-dotenv
 stable-baselines3
 gym
+psycopg2-binary

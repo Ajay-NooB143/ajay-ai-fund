@@ -2,6 +2,8 @@ import os
 
 from binance.client import Client
 
+from db.logger import log_trade
+
 _client = None
 
 SAFE_MODE = True
@@ -36,5 +38,10 @@ def execute_trade(symbol, side):
         client.order_market_buy(symbol=symbol, quantity=qty)
     else:
         client.order_market_sell(symbol=symbol, quantity=qty)
+
+    try:
+        log_trade(symbol, side, qty, price)
+    except Exception as exc:
+        print(f"[WARN] Failed to log trade: {exc}")
 
     print(f"EXECUTED {side} {symbol} @ {price}")
