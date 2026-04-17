@@ -39,5 +39,9 @@ def execute_trade(symbol, side):
     else:
         client.order_market_sell(symbol=symbol, quantity=qty)
 
-    log_trade(symbol, side, qty, price)
+    try:
+        log_trade(symbol, side, qty, price)
+    except Exception as exc:
+        print(f"[WARN] Failed to log trade: {exc}")
+
     print(f"EXECUTED {side} {symbol} @ {price}")

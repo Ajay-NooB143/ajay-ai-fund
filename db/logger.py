@@ -24,5 +24,6 @@ def log_trade(symbol, side, qty, price):
             (symbol, side, qty, price),
         )
         conn.commit()
+        cur.close()
     finally:
         conn.close()
