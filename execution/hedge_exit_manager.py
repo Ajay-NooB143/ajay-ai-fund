@@ -22,7 +22,7 @@ except ImportError:
 # Default thresholds — callers may override via function arguments.
 # ---------------------------------------------------------------------------
 
-DEFAULT_PROFIT_TARGET = 10.0   # USD — close hedge once floating PnL >= target
+DEFAULT_PROFIT_TARGET = 10.0   # close hedge once floating PnL >= target (account currency)
 DEFAULT_IMBALANCE_RATIO = 3.0  # close when one side's volume is ≥ 3× the other
 
 

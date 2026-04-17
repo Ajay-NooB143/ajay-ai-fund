@@ -30,6 +30,9 @@ try:
 except ImportError:
     mt5 = None
 
+# Fallback balance used when mt5.account_info() is unavailable.
+DEFAULT_FALLBACK_BALANCE = 10_000.0
+
 
 # ---------------------------------------------------------------------------
 # Account configuration helpers
@@ -82,17 +85,19 @@ def _connect_account(account: dict) -> bool:
     if mt5 is None:
         return False
 
+    login_id = account.get("login", 0)
+
     if not mt5.initialize():
-        print(f"[multi] MT5 init failed for login {account.get('login')}")
+        print(f"[multi] MT5 init failed for login {login_id}")
         return False
 
     authorised = mt5.login(
-        login=account["login"],
-        password=account["password"],
-        server=account["server"],
+        login=login_id,
+        password=account.get("password", ""),
+        server=account.get("server", ""),
     )
     if not authorised:
-        print(f"[multi] Login failed for {account['login']}")
+        print(f"[multi] Login failed for {login_id}")
         mt5.shutdown()
         return False
 
@@ -234,7 +239,7 @@ def run_multi_account(
 
         try:
             acct_info = mt5.account_info()
-            balance = acct_info.balance if acct_info else 10_000.0
+            balance = acct_info.balance if acct_info else DEFAULT_FALLBACK_BALANCE
 
             lot = calc_lot_mt5(balance, risk_pct, sl_points, symbol)
             result = smart_execution(signal, confidence, symbol, lot)
