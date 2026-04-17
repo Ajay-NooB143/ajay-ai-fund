@@ -1,4 +1,5 @@
 import streamlit as st
+from agents.conva import ConvaAgent
 from agents.forecaster.data_fetcher import get_stock_data
 from agents.sentiment.sentiment_agent import analyze_sentiment
 from agents.strategy import trading_decision
@@ -10,12 +11,66 @@ from analytics.support_resistance import detect_support_resistance
 st.title("🤖 AI Trading Dashboard")
 
 # ── Tab layout ────────────────────────────────────────────────────────────────
-tab_trade, tab_risk, tab_leverage, tab_sr = st.tabs([
+tab_conva, tab_trade, tab_risk, tab_leverage, tab_sr = st.tabs([
+    "🤖 CONVA Chat",
     "📈 AI Trading",
     "🛡️ Risk Calculator",
     "⚡ Leverage Optimizer",
     "📐 Support / Resistance",
 ])
+
+# ── Tab 0: CONVA Chat ─────────────────────────────────────────────────────────
+with tab_conva:
+    st.header("🤖 CONVA — Built for AI")
+    st.caption(
+        "Chat with CONVA to analyse stocks, check sentiment, execute trades, "
+        "or view your portfolio."
+    )
+
+    # Initialise session state for agent and messages
+    if "conva_agent" not in st.session_state:
+        st.session_state.conva_agent = ConvaAgent()
+    if "conva_messages" not in st.session_state:
+        st.session_state.conva_messages = []
+
+    # Render conversation history
+    for msg in st.session_state.conva_messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # Chat input
+    if user_input := st.chat_input("Ask CONVA anything…"):
+        # Show user message immediately
+        st.session_state.conva_messages.append(
+            {"role": "user", "content": user_input},
+        )
+        with st.chat_message("user"):
+            st.markdown(user_input)
+
+        # Get CONVA response
+        response = st.session_state.conva_agent.chat(user_input)
+        st.session_state.conva_messages.append(
+            {"role": "assistant", "content": response},
+        )
+        with st.chat_message("assistant"):
+            st.markdown(response)
+
+    # Sidebar controls for CONVA
+    with st.sidebar:
+        st.subheader("CONVA Controls")
+        if st.button("🗑️ Clear Chat", key="conva_clear"):
+            st.session_state.conva_agent.reset()
+            st.session_state.conva_messages = []
+            st.rerun()
+
+        with st.expander("💡 Example prompts"):
+            st.markdown(
+                "- Analyse AAPL for me\n"
+                "- What is the sentiment for Tesla? "
+                "News: Tesla reports record Q4 profits.\n"
+                "- Buy EURUSD\n"
+                "- Show my portfolio"
+            )
 
 # ── Tab 1: AI Trading ─────────────────────────────────────────────────────────
 with tab_trade:
