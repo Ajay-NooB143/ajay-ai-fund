@@ -1,6 +1,7 @@
 python-binance
 pandas
 numpy
+yfinance
 xgboost
 streamlit
 flask
