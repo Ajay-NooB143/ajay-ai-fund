@@ -1,0 +1,116 @@
+//@version=5
+strategy("AJAY ULTRA AI FINAL GOD MODE 💀", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+// ================= INPUTS =================
+emaLen = input.int(50)
+atrLen = input.int(14)
+rr     = input.float(2.0)
+scoreMin = input.int(4)
+useAI  = input.bool(true)
+
+// ================= CORE =================
+ema = ta.ema(close, emaLen)
+atr = ta.atr(atrLen)
+
+plot(ema, color=color.orange)
+
+// ================= HTF =================
+htfClose = request.security(syminfo.tickerid, "60", close[1])
+htfEma   = request.security(syminfo.tickerid, "60", ta.ema(close,50)[1])
+
+bullHTF = htfClose > htfEma
+bearHTF = htfClose < htfEma
+
+// ================= STRUCTURE =================
+high20 = ta.highest(high, 20)
+low20  = ta.lowest(low, 20)
+
+liqBuy  = low < low20[1]  and close > low20[1]
+liqSell = high > high20[1] and close < high20[1]
+
+// ================= MSS =================
+mssBuy  = ta.crossover(close, ta.highest(high,5)[1])
+mssSell = ta.crossunder(close, ta.lowest(low,5)[1])
+
+// ================= FVG =================
+fvgBuy  = low[1] > high[2]
+fvgSell = high[1] < low[2]
+
+// ================= ORDER BLOCK =================
+obBull = close[1] < open[1] and close > close[1]
+obBear = close[1] > open[1] and close < close[1]
+
+// ================= AI (KNN SIMPLE) =================
+rsiVal = ta.rsi(close,14)/100
+vol    = ta.atr(14)/close
+
+aiScore = 0.0
+matches = 0.0
+
+for i=1 to 30
+    cond = math.abs(rsiVal[i]-rsiVal) < 0.1 and math.abs(vol[i]-vol) < 0.05
+    if cond
+        aiScore += close[i+3] > close[i] ? 1 : -1
+        matches += 1
+
+isAIBull = aiScore > 0
+isAIBear = aiScore < 0
+
+aiConf = math.min(matches*5,100)
+
+// ================= SCORE =================
+scoreBuy = 0
+scoreBuy += bullHTF ? 1:0
+scoreBuy += liqBuy ? 1:0
+scoreBuy += mssBuy ? 1:0
+scoreBuy += fvgBuy ? 1:0
+scoreBuy += obBull ? 1:0
+scoreBuy += (useAI and isAIBull and aiConf>60 ? 1:0)
+
+scoreSell = 0
+scoreSell += bearHTF ? 1:0
+scoreSell += liqSell ? 1:0
+scoreSell += mssSell ? 1:0
+scoreSell += fvgSell ? 1:0
+scoreSell += obBear ? 1:0
+scoreSell += (useAI and isAIBear and aiConf>60 ? 1:0)
+
+// ================= ENTRY =================
+buy  = scoreBuy >= scoreMin
+sell = scoreSell >= scoreMin
+
+// ================= SL TP =================
+longSL = close - atr*1.5
+longTP = close + atr*1.5*rr
+
+shortSL = close + atr*1.5
+shortTP = close - atr*1.5*rr
+
+if buy
+    strategy.entry("BUY", strategy.long)
+
+if sell
+    strategy.entry("SELL", strategy.short)
+
+strategy.exit("X BUY","BUY", stop=longSL, limit=longTP)
+strategy.exit("X SELL","SELL", stop=shortSL, limit=shortTP)
+
+// ================= DASHBOARD =================
+var table dash = table.new(position.top_right,2,6)
+
+if barstate.islast
+    table.cell(dash,0,0,"AI CONF")
+    table.cell(dash,1,0,str.tostring(aiConf)+"%")
+
+    table.cell(dash,0,1,"BUY SCORE")
+    table.cell(dash,1,1,str.tostring(scoreBuy))
+
+    table.cell(dash,0,2,"SELL SCORE")
+    table.cell(dash,1,2,str.tostring(scoreSell))
+
+    table.cell(dash,0,3,"SIGNAL")
+    table.cell(dash,1,3,buy?"BUY":sell?"SELL":"WAIT")
+
+// ================= ALERT =================
+alertcondition(buy, "BUY", "BUY SIGNAL")
+alertcondition(sell, "SELL", "SELL SIGNAL")
