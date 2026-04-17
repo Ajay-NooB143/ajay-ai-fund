@@ -11,5 +11,8 @@ from strategies.multi_pair import run_multi
 if __name__ == "__main__":
     print("🚀 MULTI-PAIR BOT RUNNING")
     while True:
-        run_multi()
+        try:
+            run_multi()
+        except Exception as e:
+            print(f"[ERROR] run_multi cycle failed: {e}")
         time.sleep(60)  # every 1 min

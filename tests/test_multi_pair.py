@@ -22,9 +22,9 @@ def test_get_signal_returns_valid_value():
 # ---------------------------------------------------------------------------
 
 def test_position_size_one_percent_risk():
-    from strategies.multi_pair import position_size
+    from strategies.multi_pair import NOTIONAL_DIVISOR, RISK_PERCENT, position_size
 
-    assert position_size(10_000) == round((10_000 * 0.01) / 100, 5)
+    assert position_size(10_000) == round((10_000 * RISK_PERCENT) / NOTIONAL_DIVISOR, 5)
     assert position_size(0) == 0.0
 
 

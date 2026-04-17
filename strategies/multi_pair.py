@@ -20,6 +20,14 @@ MAX_TRADES = 3  # risk control
 # Set to False only when ready for live trading.
 SAFE_MODE = True
 
+# Signal thresholds for the random placeholder strategy.
+BUY_THRESHOLD = 0.6
+SELL_THRESHOLD = 0.4
+
+# Position-sizing parameters.
+RISK_PERCENT = 0.01       # fraction of balance allocated per trade
+NOTIONAL_DIVISOR = 100    # divisor applied after risk percent to keep quantities small
+
 _client = None
 
 
@@ -48,9 +56,9 @@ def get_signal(symbol: str) -> str:  # noqa: ARG001
         ``"BUY"``, ``"SELL"``, or ``"HOLD"``
     """
     r = random.random()
-    if r > 0.6:
+    if r > BUY_THRESHOLD:
         return "BUY"
-    elif r < 0.4:
+    elif r < SELL_THRESHOLD:
         return "SELL"
     return "HOLD"
 
@@ -71,7 +79,7 @@ def position_size(balance: float) -> float:
     Sizes the position at 1 % of balance divided by a notional factor of 100
     to keep individual order quantities small.
     """
-    return round((balance * 0.01) / 100, 5)  # 1% risk
+    return round((balance * RISK_PERCENT) / NOTIONAL_DIVISOR, 5)  # 1% risk
 
 
 def execute(symbol: str, side: str, qty: float):
