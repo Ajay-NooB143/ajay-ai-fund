@@ -57,6 +57,6 @@ def run_bot():
         signal = meta_brain(state, next_price)
 
         if signal != "HOLD":
-            execute_trade(symbol, signal)
+            execute_trade(symbol, signal, price=state["close"])
 
         time.sleep(TRADING_LOOP_INTERVAL_SECONDS)
