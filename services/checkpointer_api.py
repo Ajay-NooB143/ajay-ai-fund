@@ -87,11 +87,11 @@ class CheckpointerService:
             The version identifier (Unix timestamp).
         """
         with self._version_lock:
-            candidate = int(time.time() * 1000)
-            if candidate <= self._last_version:
-                candidate = self._last_version + 1
-            self._last_version = candidate
-        version = str(candidate)
+            timestamp_ms = int(time.time() * 1000)
+            if timestamp_ms <= self._last_version:
+                timestamp_ms = self._last_version + 1
+            self._last_version = timestamp_ms
+        version = str(timestamp_ms)
         model_dir = self._model_dir(model_name)
 
         data_path = model_dir / f"{version}.pkl"
@@ -262,8 +262,8 @@ def get_latest_checkpoint(model_name):
         version = _service.get_latest_version(model_name)
         meta = _service.get_metadata(model_name, version)
         return jsonify(meta)
-    except FileNotFoundError as exc:
-        return jsonify({"error": str(exc)}), 404
+    except FileNotFoundError:
+        return jsonify({"error": "Checkpoint not found"}), 404
 
 
 @checkpointer_bp.route("/<model_name>/<version>", methods=["GET"])
@@ -272,8 +272,8 @@ def get_checkpoint_metadata(model_name, version):
     try:
         meta = _service.get_metadata(model_name, version)
         return jsonify(meta)
-    except FileNotFoundError as exc:
-        return jsonify({"error": str(exc)}), 404
+    except FileNotFoundError:
+        return jsonify({"error": "Checkpoint not found"}), 404
 
 
 @checkpointer_bp.route("/<model_name>/<version>", methods=["DELETE"])
@@ -282,5 +282,5 @@ def delete_checkpoint(model_name, version):
     try:
         _service.delete(model_name, version)
         return jsonify({"deleted": True, "version": version})
-    except FileNotFoundError as exc:
-        return jsonify({"error": str(exc)}), 404
+    except FileNotFoundError:
+        return jsonify({"error": "Checkpoint not found"}), 404
