@@ -2,7 +2,11 @@ WARMUP_PERIOD = 50
 INITIAL_BALANCE = 10000
 
 
-def backtest(df, strategy_func, initial_balance=INITIAL_BALANCE, warmup_period=WARMUP_PERIOD):
+def backtest(
+    df, strategy_func,
+    initial_balance=INITIAL_BALANCE,
+    warmup_period=WARMUP_PERIOD
+):
     balance = initial_balance
     trades = []
 

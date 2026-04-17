@@ -1,6 +1,8 @@
 import streamlit as st
 
-from analytics.performance import equity_curve, load_trades, performance_metrics
+from analytics.performance import (
+    equity_curve, load_trades, performance_metrics
+)
 
 df = load_trades()
 
