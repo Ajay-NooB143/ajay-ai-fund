@@ -24,6 +24,7 @@ def send_msg(text: str) -> None:
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     try:
-        requests.post(url, data={"chat_id": chat_id, "text": text}, timeout=10)
+        response = requests.post(url, data={"chat_id": chat_id, "text": text}, timeout=10)
+        response.raise_for_status()
     except Exception as exc:
         print(f"[WARN] Failed to send Telegram message: {exc}")
