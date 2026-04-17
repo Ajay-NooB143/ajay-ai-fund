@@ -48,6 +48,10 @@ def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
 
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
+
+    # When avg_loss is zero RS is inf → RSI correctly becomes 100.
+    # When both avg_gain and avg_loss are zero RS is NaN → default to 50.
+    rsi = rsi.fillna(50.0)
     return rsi
 
 
@@ -109,7 +113,7 @@ def calculate_adx(
     plus_di = 100 * (plus_dm.rolling(window=period).mean() / atr)
     minus_di = 100 * (minus_dm.rolling(window=period).mean() / atr)
 
-    dx = (plus_di - minus_di).abs() / (plus_di + minus_di) * 100
+    dx = (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, float("nan")) * 100
     adx = dx.rolling(window=period).mean()
     return adx
 
