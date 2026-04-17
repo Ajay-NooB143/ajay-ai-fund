@@ -7,7 +7,6 @@ class RLAgent:
 
 def smart_execute(signal, orderbook):
     spread = float(orderbook['asks'][0][0]) - float(orderbook['bids'][0][0])
-
     if spread < 0.5:
         return "LIMIT ORDER"
     else:
