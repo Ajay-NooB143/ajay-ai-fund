@@ -6,6 +6,9 @@ import time
 # =========================
 LIVE_TRADING = False
 MAX_RISK = 0.02
+LEARNING_RATE = 0.1
+MIN_WEIGHT = 0.1
+SIMULATED_PNL_VALUES = [10, -5, 15, -10]
 
 # =========================
 # 🧠 STRATEGY WEIGHTS (Learning)
@@ -61,7 +64,7 @@ def stop_loss(entry, current):
 def execute_trade(signal):
     print(f"Executing trade: {signal}")
     # simulate profit/loss
-    return random.choice([10, -5, 15, -10])
+    return random.choice(SIMULATED_PNL_VALUES)
 
 
 # =========================
@@ -83,15 +86,15 @@ def total_pnl():
 # =========================
 def update_strategy(profit):
     if profit > 0:
-        strategy_weights["trend"] += 0.1
-        strategy_weights["sentiment"] += 0.1
+        strategy_weights["trend"] += LEARNING_RATE
+        strategy_weights["sentiment"] += LEARNING_RATE
     else:
-        strategy_weights["trend"] -= 0.1
-        strategy_weights["sentiment"] -= 0.1
+        strategy_weights["trend"] -= LEARNING_RATE
+        strategy_weights["sentiment"] -= LEARNING_RATE
 
     # clamp
-    strategy_weights["trend"] = max(0.1, strategy_weights["trend"])
-    strategy_weights["sentiment"] = max(0.1, strategy_weights["sentiment"])
+    strategy_weights["trend"] = max(MIN_WEIGHT, strategy_weights["trend"])
+    strategy_weights["sentiment"] = max(MIN_WEIGHT, strategy_weights["sentiment"])
 
 
 # =========================
@@ -105,6 +108,9 @@ def notify(msg):
 # 🧠 MAIN LOOP (AUTO LEARNING)
 # =========================
 def run_bot():
+    if LIVE_TRADING:
+        notify("⚠️ LIVE TRADING is enabled — real orders will be placed!")
+
     balance = 1000
 
     while True:
