@@ -62,6 +62,12 @@ class CheckpointerService:
 
             manager = CheckpointerService()
             graph = workflow.compile(checkpointer=manager.get_saver())
+
+        .. note::
+
+           The returned ``InMemorySaver`` manages LangGraph **graph
+           execution state** independently of the file-based model
+           checkpoints stored by the other methods on this class.
         """
         return self.saver
 
