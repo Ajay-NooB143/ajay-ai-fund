@@ -98,3 +98,25 @@ def full_trade_plan(
         return tp
 
     return {**sizing, **tp, "entry_price": entry_price, "stop_loss_price": stop_loss_price}
+
+
+def calc_lot(balance: float, risk_pct: float, sl_pips: float) -> float:
+    """Calculate position lot size from a pip-value risk model.
+
+    Parameters
+    ----------
+    balance  : Account balance in quote currency.
+    risk_pct : Percentage of balance to risk (e.g. ``1`` for 1 %).
+    sl_pips  : Stop-loss distance in pips.
+
+    Returns
+    -------
+    float
+        Lot size rounded to three decimal places, or ``0.0`` when *sl_pips*
+        is zero to avoid a division-by-zero error.
+    """
+    if sl_pips <= 0:
+        return 0.0
+    risk_amount = balance * (risk_pct / 100.0)
+    lot = risk_amount / sl_pips
+    return round(lot, 3)
