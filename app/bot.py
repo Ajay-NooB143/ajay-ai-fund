@@ -28,6 +28,11 @@ def run_bot():
         # (e.g. from a live feed) once real market data is wired in.
         next_price = state["close"]
 
+        # Guard: skip trading until real market data is available.
+        if state["close"] == 0.0:
+            time.sleep(TRADING_LOOP_INTERVAL_SECONDS)
+            continue
+
         signal = meta_brain(state, next_price)
 
         if signal != "HOLD":

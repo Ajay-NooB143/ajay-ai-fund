@@ -37,6 +37,9 @@ def compete(agents: dict, state: dict, next_price: float) -> tuple[str, dict]:
     tuple[str, dict]
         ``(best_agent_name, scores_dict)``
     """
+    if not agents:
+        raise ValueError("compete() requires at least one agent")
+
     scores: dict[str, float] = {}
     price = state["close"]
 
