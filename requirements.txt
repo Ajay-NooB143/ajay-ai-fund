@@ -7,6 +7,7 @@ flask
 fastapi
 uvicorn[standard]
 requests
+httpx>=0.24.0
 python-dotenv
 stable-baselines3
 gym
