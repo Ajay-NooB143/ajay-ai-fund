@@ -32,4 +32,4 @@ jobs:
 
       - name: Run FinGPT App
         run: |
-          python -m src.app
+          python main.py
