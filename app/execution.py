@@ -2,6 +2,8 @@ import os
 
 from binance.client import Client
 
+from db.logger import log_trade
+
 _client = None
 
 SAFE_MODE = True
@@ -37,4 +39,5 @@ def execute_trade(symbol, side):
     else:
         client.order_market_sell(symbol=symbol, quantity=qty)
 
+    log_trade(symbol, side, qty, price)
     print(f"EXECUTED {side} {symbol} @ {price}")
