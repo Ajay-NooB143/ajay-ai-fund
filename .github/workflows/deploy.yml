@@ -1,0 +1,43 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify secrets are configured
+        env:
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          KEY: ${{ secrets.KEY }}
+        run: |
+          if [ -z "$HOST" ] || [ -z "$USERNAME" ] || [ -z "$KEY" ]; then
+            echo "::error::Missing required secrets. See DEPLOYMENT.md for setup instructions."
+            exit 1
+          fi
+          echo "✅ All deployment secrets are configured."
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          key: ${{ secrets.KEY }}
+          script: |
+            set -e
+            cd ~/ajay-ai-fund || { echo "Directory not found"; exit 1; }
+            git pull origin master
+            pip install -r requirements.txt
+            # Restart the application (adjust to your process manager)
+            if command -v supervisorctl &> /dev/null; then
+              sudo supervisorctl restart ajay-ai-fund
+            elif systemctl is-active --quiet ajay-ai-fund; then
+              sudo systemctl restart ajay-ai-fund
+            else
+              echo "⚠️  No process manager detected."
+              echo "Start manually: uvicorn app.main:app --host 0.0.0.0 --port 5000"
+            fi
