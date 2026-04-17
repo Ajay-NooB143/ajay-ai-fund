@@ -1,174 +1,87 @@
 # Fix for alpha-gpt GitHub Actions Workflow Failure
 
 ## Problem
-The GitHub Actions workflow at https://github.com/Ajay-NooB143/alpha-gpt/actions/runs/24543688982 fails with:
+
+The GitHub Actions workflow at
+<https://github.com/Ajay-NooB143/alpha-gpt/actions/runs/24562219647/job/71814407995#step:7:1>
+fails with:
+
 ```
-sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused
+TypeError: Invalid checkpointer provided. Expected an instance of
+`BaseCheckpointSaver`, `True`, `False`, or `None`. Received
+AlphaGPTCheckpointer. Pass a proper saver (e.g., InMemorySaver,
+AsyncPostgresSaver).
 ```
 
 ## Root Cause
-The `AlphaGPTCheckpointer.__init__` method in `src/agent/database/checkpointer_api.py` calls `create_tables(self.engine)` which immediately tries to connect to PostgreSQL. Even though there's a fallback to `MemorySaver` in `_create_postgres_saver()`, the database connection fails during table creation.
 
-## Solution Option 1: Handle Database Connection Gracefully (Recommended)
+`AlphaGPTCheckpointer` (in `src/agent/database/checkpointer_api.py`) is a
+**custom wrapper** class that does **not** inherit from
+`langgraph.checkpoint.base.BaseCheckpointSaver`.
 
-Modify `src/agent/database/checkpointer_api.py` in the alpha-gpt repository:
+In `src/agent/graph.py` the wrapper instance is passed directly to
+`workflow.compile(checkpointer=checkpointer)`. Starting with LangGraph ≥ 1.1,
+the `compile()` method validates the checkpointer type and raises a `TypeError`
+when it receives an object that is not `BaseCheckpointSaver`, `True`, `False`,
+or `None`.
+
+The database connection warning printed before the crash is **not** the cause –
+that error is already handled gracefully and falls back to `MemorySaver`. The
+crash happens afterwards because the `AlphaGPTCheckpointer` wrapper itself is
+not a valid LangGraph checkpointer.
+
+## Fix (Recommended) — one-line change in `src/agent/graph.py`
+
+Pass the **underlying saver** (which *is* a `BaseCheckpointSaver`) instead of
+the wrapper:
+
+```diff
+--- a/src/agent/graph.py
++++ b/src/agent/graph.py
+@@ -38,8 +38,9 @@
+     if use_postgres:
+         # Use PostgreSQL checkpointer
+-        checkpointer = get_checkpoint_manager()
++        manager = get_checkpoint_manager()
++        checkpointer = manager.get_saver()   # returns BaseCheckpointSaver
+         # Create the graph with checkpointing
+         graph = workflow.compile(checkpointer=checkpointer)
+     else:
+```
+
+`AlphaGPTCheckpointer.get_saver()` already returns `self.postgres_saver`,
+which is either a `PostgresSaver` or a `MemorySaver` — both valid
+`BaseCheckpointSaver` subclasses.
+
+If you also need the wrapper's custom `save_state()` / query helpers, keep a
+reference to the `manager` object at module level and call it from your agent
+nodes as needed.
+
+## Alternative Fix — make `AlphaGPTCheckpointer` a proper saver
+
+If you prefer the wrapper to be usable directly as a checkpointer, have it
+extend `BaseCheckpointSaver` and delegate the required abstract methods:
 
 ```python
-def __init__(self, postgres_saver: Union[PostgresSaver, AsyncPostgresSaver] = None):
-    """
-    Initialize the AlphaGPT checkpointer with a PostgreSQL saver.
+from langgraph.checkpoint.base import BaseCheckpointSaver
 
-    Args:
-        postgres_saver: The LangGraph PostgreSQL saver to use
-    """
-    self.postgres_saver = postgres_saver or self._create_postgres_saver()
-    
-    # Only create tables if we're using PostgreSQL, not MemorySaver
-    try:
-        from langgraph.checkpoint.memory import MemorySaver
-        if not isinstance(self.postgres_saver, MemorySaver):
-            self.engine = get_db_engine()
-            create_tables(self.engine)
-        else:
-            self.engine = None
-    except Exception as e:
-        print(f"Warning: Could not initialize database tables: {str(e)}")
-        print("Continuing with MemorySaver fallback")
-        self.engine = None
+class AlphaGPTCheckpointer(BaseCheckpointSaver):
+    ...
 ```
 
-Also update methods that use `self.engine` to check if it's None:
+This requires implementing the abstract checkpoint interface (`put`, `get`,
+`list`, etc.), which is more work than the one-line fix above.
 
-```python
-def save_state(self, config: RunnableConfig, state_values: Dict[str, Any]) -> None:
-    """
-    Save all state data to our custom database tables
+## Files to Modify in the alpha-gpt Repository
 
-    Args:
-        config: LangGraph config
-        state_values: The current state values
-    """
-    # Skip if using MemorySaver
-    if self.engine is None:
-        return
-        
-    thread_id = config.get("configurable", {}).get("thread_id")
-    checkpoint_id = config.get("configurable", {}).get("checkpoint_id")
-
-    if not thread_id or not checkpoint_id:
-        return
-
-    # Save hypothesis first
-    hypothesis = save_hypothesis(thread_id, checkpoint_id, state_values)
-
-    # Save alphas if we have a hypothesis
-    if hypothesis:
-        save_alphas(thread_id, checkpoint_id, state_values, hypothesis.id)
-
-    # Save backtest results
-    save_backtest_results(thread_id, checkpoint_id, state_values)
-```
-
-## Solution Option 2: Add PostgreSQL Service to Workflow
-
-Modify `.github/workflows/trading-bot.yml` in the alpha-gpt repository:
-
-```yaml
-name: Trading Bot
-
-on:
-  push:
-    branches: [ main ]
-  schedule:
-    - cron: '0 * * * *' # every hour
-  workflow_dispatch:
-
-jobs:
-  run-trading-bot:
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-    
-    # Add PostgreSQL service
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: alphagpt
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    
-    env:
-      BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
-      BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      # Add PostgreSQL connection parameters
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: alphagpt
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install build tools
-        run: |
-          python -m pip install --upgrade pip setuptools wheel build
-
-      - name: Install dependencies
-        run: |
-          if [ -f pyproject.toml ]; then
-            pip install -e '.[dev]' || pip install . || echo "Failed to install with pip install .[dev], proceeding without install"
-          else
-            echo "No pyproject.toml found, skipping install"
-          fi
-
-      - name: Run trading bot
-        run: |
-          python bot/main.py
-
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: trading-bot-logs
-          path: ./logs || true
-```
-
-## Recommendation
-
-**Use Option 1** - it's more robust and doesn't require running a PostgreSQL service in CI for every run, which would slow down the workflow. The MemorySaver fallback is already implemented; we just need to ensure it's properly utilized when the database is unavailable.
-
-## Files to Modify in alpha-gpt Repository
-
-1. `src/agent/database/checkpointer_api.py` - Update the `AlphaGPTCheckpointer` class
-2. Optionally: `.github/workflows/trading-bot.yml` - if choosing Option 2
+| File | Change |
+|------|--------|
+| `src/agent/graph.py` | Call `get_checkpoint_manager().get_saver()` instead of passing the wrapper directly |
 
 ## Testing
 
-After applying the fix, the workflow should:
-1. Start without errors
-2. Use MemorySaver when PostgreSQL is unavailable
-3. Continue to work with PostgreSQL when it's available (production)
+After applying the fix the workflow should:
+
+1. Start without a `TypeError`
+2. Use `MemorySaver` when PostgreSQL is unavailable (the existing fallback)
+3. Use `PostgresSaver` when a database is available (production)
