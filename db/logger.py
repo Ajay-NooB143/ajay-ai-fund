@@ -52,7 +52,7 @@ def log_trade(symbol, side, qty, price):
     """
     try:
         conn = get_connection()
-    except Exception as exc:
+    except psycopg2.OperationalError as exc:
         print(f"[DB] Could not connect – trade not logged: {exc}")
         return
 
@@ -67,7 +67,7 @@ def log_trade(symbol, side, qty, price):
         )
         conn.commit()
         cur.close()
-    except Exception as exc:
+    except psycopg2.Error as exc:
         print(f"[DB] Failed to log trade: {exc}")
     finally:
         conn.close()
