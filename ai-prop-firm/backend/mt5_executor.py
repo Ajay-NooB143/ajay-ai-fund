@@ -170,12 +170,10 @@ class MT5Executor:
         -------
         dict – execution result(s).
         """
-        if confidence > 80:
-            return self.execute(symbol, signal, volume, comment="AI HIGH-CONF")
-        elif confidence > 60:
-            return self.execute(symbol, signal, volume, comment="AI MED-CONF")
-        else:
-            return self.hedge_trade(symbol, volume)
+        if confidence > 60:
+            label = "AI HIGH-CONF" if confidence > 80 else "AI MED-CONF"
+            return self.execute(symbol, signal, volume, comment=label)
+        return self.hedge_trade(symbol, volume)
 
     def run_hedge_flow(self, symbol: str = "XAUUSD", risk_pct: float = 1.0,
                        sl_points: float = 100.0, signal: str = "BUY",

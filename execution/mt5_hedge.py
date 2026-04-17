@@ -12,6 +12,9 @@ try:
 except ImportError:
     mt5 = None
 
+# Unique identifier attached to every order for tracking.
+HEDGE_MAGIC = 999999
+
 
 # ---------------------------------------------------------------------------
 # Connection
@@ -112,7 +115,7 @@ def place_order(symbol: str, lot: float, order_type: str) -> dict:
         "type": mt5.ORDER_TYPE_BUY if order_type == "BUY" else mt5.ORDER_TYPE_SELL,
         "price": price,
         "deviation": 10,
-        "magic": 999999,
+        "magic": HEDGE_MAGIC,
         "comment": "AI HEDGE",
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": mt5.ORDER_FILLING_IOC,
@@ -158,12 +161,9 @@ def smart_execution(signal: str, confidence: float, symbol: str,
     * 60 < confidence <= 80  → single medium-confidence trade
     * confidence <= 60 → hedge (buy + sell)
     """
-    if confidence > 80:
+    if confidence > 60:
         return place_order(symbol, lot, signal)
-    elif confidence > 60:
-        return place_order(symbol, lot, signal)
-    else:
-        return hedge_trade(symbol, lot)
+    return hedge_trade(symbol, lot)
 
 
 # ---------------------------------------------------------------------------
