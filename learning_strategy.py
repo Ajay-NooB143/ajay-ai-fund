@@ -3,6 +3,7 @@ strategy_weights = {
     "sentiment": 1.0
 }
 
+
 def generate_signal(price, sentiment):
     score = 0
 
@@ -13,5 +14,7 @@ def generate_signal(price, sentiment):
         score += strategy_weights["sentiment"]
 
     return "BUY" if score > 1 else "SELL"
+
+
 def my_function():
     pass
