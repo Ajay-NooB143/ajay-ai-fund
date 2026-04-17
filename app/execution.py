@@ -13,10 +13,10 @@ def _get_client():
     global _client
     if _client is None:
         api_key = os.getenv("BINANCE_API_KEY")
-        api_secret = os.getenv("BINANCE_SECRET")
+        api_secret = os.getenv("BINANCE_SECRET") or os.getenv("BINANCE_API_SECRET")
         if not api_key or not api_secret:
             raise RuntimeError(
-                "BINANCE_API_KEY and BINANCE_SECRET "
+                "BINANCE_API_KEY and BINANCE_SECRET (or BINANCE_API_SECRET) "
                 "environment variables must be set"
             )
         _client = Client(api_key, api_secret)

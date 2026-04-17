@@ -1,4 +1,4 @@
-name: AI Trading Bot
+name: Trading Bot
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 jobs:
-  run-bot:
+  run-trading:
     runs-on: ubuntu-latest
 
     services:
@@ -27,17 +27,23 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
-      BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
+      BINANCE_SECRET: ${{ secrets.BINANCE_API_SECRET }}
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trading
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libpq-dev
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -47,5 +53,20 @@ jobs:
         env:
           PGPASSWORD: postgres
 
-      - name: Run bot
-        run: python main.py
+      - name: Run trading bot
+        run: |
+          timeout 60 python main.py; rc=$?
+          if [ "$rc" -eq 124 ]; then
+            echo "✅ Bot ran successfully for 60s (timeout reached)"
+            exit 0
+          fi
+          exit $rc
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-logs
+          path: |
+            *.log
+            data/
