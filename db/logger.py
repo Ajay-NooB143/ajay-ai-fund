@@ -14,7 +14,9 @@ def _get_connection():
     return psycopg2.connect(database_url)
 
 
-def log_trade(symbol, side, qty, price):
+def log_trade(
+    symbol: str, side: str, qty: float, price: float
+) -> None:
     """Insert a trade record into the trades table.
 
     Args:
@@ -35,13 +37,16 @@ def log_trade(symbol, side, qty, price):
                 (symbol, side, qty, price),
             )
         conn.commit()
-    except psycopg2.Error:
-        logger.exception(
-            "Failed to log trade: %s %s %s @ %s",
-            symbol, side, qty, price,
+    except psycopg2.Error as exc:
+        logger.error(
+            "Failed to log trade: %s %s %s @ %s: %s",
+            symbol, side, qty, price, exc,
         )
         if conn is not None:
-            conn.rollback()
+            try:
+                conn.rollback()
+            except psycopg2.Error:
+                logger.debug("Rollback failed", exc_info=True)
         raise
     finally:
         if conn is not None:
