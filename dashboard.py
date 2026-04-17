@@ -80,7 +80,10 @@ with tab_leverage:
     col1, col2 = st.columns(2)
     with col1:
         lv_balance = st.number_input("Account Balance ($)", value=10000.0, min_value=1.0, key="lv_balance")
-        lv_risk_pct = st.number_input("Max Risk per Trade (%)", value=1.0, min_value=0.1, max_value=100.0, key="lv_risk")
+        lv_risk_pct = st.number_input(
+            "Max Risk per Trade (%)",
+            value=1.0, min_value=0.1, max_value=100.0, key="lv_risk",
+        )
         lv_max_lev = st.slider("Platform Max Leverage", min_value=1, max_value=125, value=20, key="lv_max")
     with col2:
         lv_entry = st.number_input("Entry Price", value=100.0, min_value=0.0001, key="lv_entry")
