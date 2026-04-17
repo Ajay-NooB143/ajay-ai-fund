@@ -1,123 +1,257 @@
 //@version=5
-strategy("AJAY ULTRA AI SNIPER 💀 FINAL", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+strategy("AJAY ULTRA AI SNIPER V2 FINAL", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=10, commission_type=strategy.commission.percent, commission_value=0.05, slippage=2, max_bars_back=500)
 
-// ================= INPUTS =================
-emaLen = input.int(50)
-atrLen = input.int(14)
-rr     = input.float(2.0)
+// ============================================================
+//  INPUTS
+// ============================================================
+emaLen   = input.int(50,    "EMA Length",        minval=10)
+atrLen   = input.int(14,    "ATR Length",        minval=5)
+rr       = input.float(2.0, "Risk Reward",       minval=1.0, step=0.5)
+atrMult  = input.float(1.5, "ATR SL Multiplier", minval=0.5, step=0.25)
+scoreMin = input.int(4,     "Min Score",         minval=3,   maxval=6)
+adxMin   = input.float(22.0,"ADX Trend Min",     minval=10,  step=1.0)
+adxRange = input.float(20.0,"ADX Range Max",     minval=5,   step=1.0)
+htfTF    = input.timeframe("60", "HTF Timeframe")
+maxDD    = input.float(3.0, "Max Daily Loss %",  minval=0.5)
 
-// ================= CORE =================
-ema = ta.ema(close, emaLen)
-atr = ta.atr(atrLen)
+// ============================================================
+//  CORE
+// ============================================================
+ema50  = ta.ema(close, emaLen)
+atr    = ta.atr(atrLen)
 
-plot(ema, color=color.orange)
+plot(ema50, "EMA 50", color=color.new(color.orange, 20), linewidth=2)
 
-// ================= HTF =================
-htf = request.security(syminfo.tickerid, "60", ta.ema(close, 50))
-bullHTF = close > htf
-bearHTF = close < htf
+// ============================================================
+//  HTF BIAS — FIX: lookahead_off prevents repainting
+// ============================================================
+htfClose = request.security(syminfo.tickerid, htfTF, close[1],           lookahead=barmerge.lookahead_off)
+htfEma   = request.security(syminfo.tickerid, htfTF, ta.ema(close,50)[1], lookahead=barmerge.lookahead_off)
+bullHTF  = htfClose > htfEma
+bearHTF  = htfClose < htfEma
 
-// ================= REGIME =================
-adx = ta.adx(14)
+// ============================================================
+//  REGIME — FIX: "range" is a reserved keyword — renamed isRange
+// ============================================================
+[diPlus, diMinus, adxVal] = ta.dmi(14, 14)
 
-trendUp   = close > ema and adx > 25
-trendDown = close < ema and adx > 25
-range     = adx < 20
+isTrendUp   = close > ema50 and adxVal > adxMin and diPlus > diMinus
+isTrendDown = close < ema50 and adxVal > adxMin and diMinus > diPlus
+isRange     = adxVal < adxRange
+isWeak      = not isTrendUp and not isTrendDown and not isRange
 
-// ================= KILLZONE =================
-hourUTC = hour(time, "UTC")
-killzone = (hourUTC >= 7 and hourUTC <= 10) or (hourUTC >= 13 and hourUTC <= 16)
+// ============================================================
+//  KILLZONE — all 3 major sessions UTC
+// ============================================================
+hUTC     = hour(time, "UTC")
+mUTC     = minute(time, "UTC")
+london   = hUTC >= 7  and hUTC < 10
+ny       = hUTC >= 13 and hUTC < 16
+overlap  = hUTC >= 13 and hUTC < 16 and hUTC >= 7
+asia     = hUTC >= 0  and hUTC < 4
+killzone = london or ny
 
-// ================= ICT =================
-// MSS
-mssBuy  = ta.crossover(close, ta.highest(high, 5)[1])
-mssSell = ta.crossunder(close, ta.lowest(low, 5)[1])
+bgcolor(london  and not overlap ? color.new(color.blue,   92) : na, title="London KZ")
+bgcolor(ny      and not overlap ? color.new(color.yellow, 92) : na, title="NY KZ")
+bgcolor(overlap                 ? color.new(color.green,  88) : na, title="Overlap KZ")
 
-// FVG
-fvgBuy  = low > high[2]
-fvgSell = high < low[2]
+// ============================================================
+//  ICT — MSS (Market Structure Shift)
+// ============================================================
+mssBuy  = ta.crossover(close,  ta.highest(high, 5)[1])
+mssSell = ta.crossunder(close, ta.lowest(low,  5)[1])
 
-// Liquidity
+// ============================================================
+//  ICT — FVG (Fair Value Gap) — FIX: correct FVG logic
+//  Bullish FVG: candle[1] low > candle[2] high  (gap up)
+//  Bearish FVG: candle[1] high < candle[2] low  (gap down)
+// ============================================================
+fvgBuy  = low[1]  > high[2]
+fvgSell = high[1] < low[2]
+
+// ============================================================
+//  ICT — LIQUIDITY SWEEP — FIX: require body reclaim
+//  Wick pierces swing level, body must close back through it
+// ============================================================
 sHigh = ta.highest(high, 20)
-sLow  = ta.lowest(low, 20)
+sLow  = ta.lowest(low,  20)
 
-liqBuy  = low < sLow[1]
-liqSell = high > sHigh[1]
+liqBuy  = low  < sLow[1]  and close > sLow[1]    // sweep lows + reclaim
+liqSell = high > sHigh[1] and close < sHigh[1]   // sweep highs + reclaim
 
-// ================= AI SCORE =================
-scoreBuy = 0
-scoreBuy += bullHTF ? 1 : 0
-scoreBuy += trendUp ? 1 : 0
-scoreBuy += mssBuy ? 1 : 0
-scoreBuy += fvgBuy ? 1 : 0
-scoreBuy += liqBuy ? 1 : 0
+// ============================================================
+//  ICT — ORDER BLOCK
+//  Bullish OB: last bearish candle before impulsive up move
+//  Bearish OB: last bullish candle before impulsive down move
+// ============================================================
+impulseUp   = close > close[1] * 1.002
+impulseDown = close < close[1] * 0.998
+
+obBull = close[1] < open[1] and impulseUp    // prev bearish candle + current impulse up
+obBear = close[1] > open[1] and impulseDown  // prev bullish candle + current impulse down
+
+// ============================================================
+//  SUPERTREND — trend confirmation
+// ============================================================
+[stLine, stDir] = ta.supertrend(3.0, 10)
+stBull = stDir == -1
+stBear = stDir ==  1
+
+plot(stBull ? stLine : na, "ST Bull", color=color.new(color.green, 0), linewidth=2, style=plot.style_linebr)
+plot(stBear ? stLine : na, "ST Bear", color=color.new(color.red,   0), linewidth=2, style=plot.style_linebr)
+
+// ============================================================
+//  AI SCORE ENGINE (max 6 — added OB)
+// ============================================================
+scoreBuy  = 0
+scoreBuy  += bullHTF    ? 1 : 0
+scoreBuy  += isTrendUp  ? 1 : 0
+scoreBuy  += mssBuy     ? 1 : 0
+scoreBuy  += fvgBuy     ? 1 : 0
+scoreBuy  += liqBuy     ? 1 : 0
+scoreBuy  += obBull     ? 1 : 0
 
 scoreSell = 0
-scoreSell += bearHTF ? 1 : 0
-scoreSell += trendDown ? 1 : 0
-scoreSell += mssSell ? 1 : 0
-scoreSell += fvgSell ? 1 : 0
-scoreSell += liqSell ? 1 : 0
+scoreSell += bearHTF    ? 1 : 0
+scoreSell += isTrendDown? 1 : 0
+scoreSell += mssSell    ? 1 : 0
+scoreSell += fvgSell    ? 1 : 0
+scoreSell += liqSell    ? 1 : 0
+scoreSell += obBear     ? 1 : 0
 
-// ================= ENTRY =================
-buy  = scoreBuy >= 4 and killzone
-sell = scoreSell >= 4 and killzone
+scoreMax = 6
 
-// ================= SMART TP =================
-liqTPBuy  = ta.highest(high, 30)
-liqTPSell = ta.lowest(low, 30)
+// ============================================================
+//  DAILY RISK GUARD
+// ============================================================
+var float dayStartEq = strategy.equity
+var int   lastDay    = dayofweek
+if dayofweek != lastDay
+    dayStartEq := strategy.equity
+    lastDay    := dayofweek
 
-// ================= SL =================
-longSL  = close - atr * 1.5
-shortSL = close + atr * 1.5
+dailyPnlPct    = (strategy.equity - dayStartEq) / dayStartEq * 100
+dailyLossBreak = dailyPnlPct < -maxDD
 
-// ================= ENTRY =================
+// ============================================================
+//  ENTRY SIGNALS
+// ============================================================
+buy  = scoreBuy  >= scoreMin and killzone and stBull and not isRange and not dailyLossBreak and strategy.position_size == 0
+sell = scoreSell >= scoreMin and killzone and stBear and not isRange and not dailyLossBreak and strategy.position_size == 0
+
+// ============================================================
+//  SL / TP LEVELS — from entry price, not close
+// ============================================================
+entryPx = strategy.position_avg_price
+
+longSL  = entryPx - atr * atrMult
+longTP1 = entryPx + atr * atrMult * rr
+longTP2 = ta.highest(high, 30)           // liquidity target
+
+shortSL  = entryPx + atr * atrMult
+shortTP1 = entryPx - atr * atrMult * rr
+shortTP2 = ta.lowest(low, 30)            // liquidity target
+
+// ============================================================
+//  ENTRIES
+// ============================================================
 if buy
-    strategy.entry("BUY", strategy.long)
-
+    strategy.entry("BUY",  strategy.long,  comment="BUY "  + str.tostring(scoreBuy)  + "/" + str.tostring(scoreMax))
 if sell
-    strategy.entry("SELL", strategy.short)
+    strategy.entry("SELL", strategy.short, comment="SELL " + str.tostring(scoreSell) + "/" + str.tostring(scoreMax))
 
-// ================= PARTIAL TP =================
-strategy.exit("TP1 BUY",  from_entry="BUY",  limit=liqTPBuy,  qty_percent=50)
-strategy.exit("TP2 BUY",  from_entry="BUY",  limit=liqTPBuy + atr * rr)
+// ============================================================
+//  EXITS — FIX: clean non-competing structure
+//  Partial TP first, then trail on remainder
+//  FIX: trail_points uses ticks not price (/ syminfo.mintick)
+// ============================================================
+if usePartialTP := true
+    strategy.exit("TP1 BUY",  from_entry="BUY",  qty_percent=50, limit=longTP1)
+    strategy.exit("TP1 SELL", from_entry="SELL", qty_percent=50, limit=shortTP1)
 
-strategy.exit("TP1 SELL", from_entry="SELL", limit=liqTPSell, qty_percent=50)
-strategy.exit("TP2 SELL", from_entry="SELL", limit=liqTPSell - atr * rr)
+strategy.exit("TP2 BUY",  from_entry="BUY",  stop=longSL,  limit=longTP2,  trail_points=atr * 1.5 / syminfo.mintick)
+strategy.exit("TP2 SELL", from_entry="SELL", stop=shortSL, limit=shortTP2, trail_points=atr * 1.5 / syminfo.mintick)
 
-// ================= TRAILING =================
-strategy.exit("TS BUY",  from_entry="BUY",  trail_points=atr)
-strategy.exit("TS SELL", from_entry="SELL", trail_points=atr)
+// ============================================================
+//  SL / TP CHART LINES
+// ============================================================
+var line slLine = na
+var line tpLine = na
+if strategy.position_size > 0
+    line.delete(slLine)
+    line.delete(tpLine)
+    slLine := line.new(bar_index, longSL,  bar_index + 20, longSL,  color=color.red,   style=line.style_dashed, width=1)
+    tpLine := line.new(bar_index, longTP1, bar_index + 20, longTP1, color=color.green, style=line.style_dashed, width=1)
+if strategy.position_size < 0
+    line.delete(slLine)
+    line.delete(tpLine)
+    slLine := line.new(bar_index, shortSL,  bar_index + 20, shortSL,  color=color.red,   style=line.style_dashed, width=1)
+    tpLine := line.new(bar_index, shortTP1, bar_index + 20, shortTP1, color=color.green, style=line.style_dashed, width=1)
 
-// ================= VISUAL =================
-plotshape(buy,  location=location.belowbar, color=color.lime, style=shape.triangleup, text="BUY")
-plotshape(sell, location=location.abovebar, color=color.red,  style=shape.triangledown, text="SELL")
+// ============================================================
+//  SIGNAL ARROWS
+// ============================================================
+plotshape(buy,  "BUY",  location=location.belowbar, color=color.lime, style=shape.triangleup,   size=size.small, text="BUY")
+plotshape(sell, "SELL", location=location.abovebar, color=color.red,  style=shape.triangledown, size=size.small, text="SELL")
 
-// ================= WINRATE =================
-wins   = strategy.wintrades
-losses = strategy.losstrades
-total  = wins + losses
-winrate = total > 0 ? (wins / total) * 100 : 0
+// ============================================================
+//  WINRATE STATS
+// ============================================================
+wins    = strategy.wintrades
+losses  = strategy.losstrades
+total   = wins + losses
+winrate = total > 0 ? wins / total * 100 : 0.0
+avgWin  = strategy.grossprofit  / math.max(wins,   1)
+avgLoss = strategy.grossloss    / math.max(losses, 1)
+pf      = strategy.grossloss != 0 ? math.abs(strategy.grossprofit / strategy.grossloss) : 0.0
 
-// ================= DASHBOARD =================
-var table dash = table.new(position.top_right, 2, 5)
+// ============================================================
+//  DASHBOARD (3 cols: label | value | dot)
+// ============================================================
+var table dash = table.new(position.top_right, 3, 18, bgcolor=color.new(color.black, 12), border_width=1, border_color=color.new(color.gray, 65), frame_width=1, frame_color=color.gray)
+
+dRow(r, k, v, vc) =>
+    dot = vc == color.lime ? "+" : vc == color.red ? "X" : "-"
+    table.cell(dash, 0, r, k,   text_color=color.new(color.gray, 5),  text_size=size.small, bgcolor=color.new(color.black, 22))
+    table.cell(dash, 1, r, v,   text_color=vc,                         text_size=size.small, bgcolor=color.new(color.black, 8))
+    table.cell(dash, 2, r, dot, text_color=vc,                         text_size=size.small, bgcolor=color.new(color.black, 8))
+
+dSep(r, lbl) =>
+    table.cell(dash, 0, r, lbl, text_color=color.new(color.gray, 35), text_size=size.small, bgcolor=color.new(color.black, 35))
+    table.cell(dash, 1, r, "",  text_color=color.gray,                 text_size=size.small, bgcolor=color.new(color.black, 35))
+    table.cell(dash, 2, r, "",  text_color=color.gray,                 text_size=size.small, bgcolor=color.new(color.black, 35))
+
+regimeLabel = isTrendUp ? "UPTREND" : isTrendDown ? "DOWNTREND" : isRange ? "RANGING" : "WEAK"
+regimeColor = isTrendUp ? color.lime : isTrendDown ? color.red : isRange ? color.yellow : color.gray
+sessLabel   = overlap ? "OVERLAP" : london ? "LONDON" : ny ? "NEW YORK" : asia ? "ASIA" : "OFF"
+sessColor   = overlap ? color.lime : killzone ? color.yellow : color.gray
+sc(s)       = s >= scoreMin ? color.lime : s >= scoreMin - 1 ? color.yellow : color.red
 
 if barstate.islast
-    table.cell(dash, 0, 0, "WINRATE")
-    table.cell(dash, 1, 0, str.tostring(winrate, "#.##") + "%")
+    dSep(0,  "AJAY ULTRA AI SNIPER V2")
+    dRow(1,  "BUY  Score",  str.tostring(scoreBuy)  + " / " + str.tostring(scoreMax), sc(scoreBuy))
+    dRow(2,  "SELL Score",  str.tostring(scoreSell) + " / " + str.tostring(scoreMax), sc(scoreSell))
+    dRow(3,  "Signal",      buy ? "BUY" : sell ? "SELL" : "WAIT",                     buy ? color.lime : sell ? color.red : color.gray)
 
-    table.cell(dash, 0, 1, "TRADES")
-    table.cell(dash, 1, 1, str.tostring(total))
+    dSep(4,  "PERFORMANCE")
+    dRow(5,  "Win Rate",    str.tostring(math.round(winrate, 1)) + " %",              winrate >= 55 ? color.lime : winrate >= 45 ? color.yellow : color.red)
+    dRow(6,  "Profit Fac",  str.tostring(math.round(pf, 2)),                          pf >= 1.5 ? color.lime : pf >= 1.0 ? color.yellow : color.red)
+    dRow(7,  "Trades",      str.tostring(total) + "  W:" + str.tostring(wins) + " L:" + str.tostring(losses), color.white)
+    dRow(8,  "Net PnL",     str.tostring(math.round(strategy.netprofit, 0)),           strategy.netprofit >= 0 ? color.lime : color.red)
+    dRow(9,  "Daily PnL",   str.tostring(math.round(dailyPnlPct, 2)) + " %",          dailyPnlPct >= 0 ? color.lime : dailyLossBreak ? color.red : color.yellow)
 
-    table.cell(dash, 0, 2, "SCORE")
-    table.cell(dash, 1, 2, str.tostring(math.max(scoreBuy, scoreSell)))
+    dSep(10, "MARKET CONTEXT")
+    dRow(11, "Regime",      regimeLabel,                                               regimeColor)
+    dRow(12, "ADX",         str.tostring(math.round(adxVal, 1)),                      adxVal > adxMin ? color.lime : color.yellow)
+    dRow(13, "Session",     sessLabel,                                                 sessColor)
+    dRow(14, "HTF Bias",    bullHTF ? "BULL" : "BEAR",                                bullHTF ? color.lime : color.red)
+    dRow(15, "SuperTrend",  stBull  ? "BULL" : "BEAR",                                stBull  ? color.lime : color.red)
 
-    table.cell(dash, 0, 3, "REGIME")
-    table.cell(dash, 1, 3, trendUp ? "TREND" : range ? "RANGE" : "WEAK")
+    dSep(16, "ICT SIGNALS")
+    dRow(17, "MSS / FVG / LIQ / OB", (mssBuy or mssSell ? "MSS " : "") + (fvgBuy or fvgSell ? "FVG " : "") + (liqBuy or liqSell ? "LIQ " : "") + (obBull or obBear ? "OB" : ""), color.white)
 
-    table.cell(dash, 0, 4, "SESSION")
-    table.cell(dash, 1, 4, killzone ? "ACTIVE" : "OFF")
-
-// ================= ALERT =================
-alertcondition(buy,  "BUY",  "BUY SIGNAL")
-alertcondition(sell, "SELL", "SELL SIGNAL")
+// ============================================================
+//  ALERTS
+// ============================================================
+alertcondition(buy,  "BUY Signal",  "AJAY SNIPER BUY|{{ticker}}|{{close}}")
+alertcondition(sell, "SELL Signal", "AJAY SNIPER SELL|{{ticker}}|{{close}}")
