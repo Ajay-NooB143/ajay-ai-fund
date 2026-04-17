@@ -29,7 +29,3 @@ jobs:
         run: |
           pip install pytest
           pytest
-
-      - name: Run FinGPT App
-        run: |
-          python -m src.app
