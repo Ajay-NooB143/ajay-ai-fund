@@ -3,6 +3,9 @@ name: Deploy
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -20,22 +23,26 @@ jobs:
           fi
           echo "✅ All deployment secrets are configured."
 
+      - name: Resolve SSH port
+        id: port
+        run: |
+          PORT="${{ secrets.PORT }}"
+          echo "value=${PORT:-22}" >> "$GITHUB_OUTPUT"
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          port: ${{ secrets.PORT }}
+          port: ${{ steps.port.outputs.value }}
           key: ${{ secrets.KEY }}
           script: |
             set -e
             cd ~/ajay-ai-fund || { echo "Directory not found"; exit 1; }
             git pull origin master
             pip install -r requirements.txt
-            # Restart the application (adjust to your process manager)
-            if command -v supervisorctl &> /dev/null; then
-              sudo supervisorctl restart ajay-ai-fund
-            elif systemctl is-active --quiet ajay-ai-fund; then
+            # Restart the application if managed by systemd
+            if systemctl is-active --quiet ajay-ai-fund; then
               sudo systemctl restart ajay-ai-fund
             else
               echo "⚠️  No process manager detected."

@@ -76,6 +76,10 @@ crashes and survives reboots.
 
 ### systemd
 
+> **Security note:** Running as `root` is shown for simplicity. In
+> production, create a dedicated user (e.g. `deploy`) with limited
+> privileges and update `User` and `WorkingDirectory` accordingly.
+
 ```bash
 sudo tee /etc/systemd/system/ajay-ai-fund.service <<EOF
 [Unit]
