@@ -14,3 +14,4 @@ gym
 psycopg2-binary
 yfinance
 langgraph-checkpoint>=2.0.0
+MetaTrader5; sys_platform == "win32"
