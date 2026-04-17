@@ -27,8 +27,11 @@ def rsi(df: pd.DataFrame, period: int = 14, column: str = "Close") -> pd.Series:
     avg_gain = gain.rolling(period).mean()
     avg_loss = loss.rolling(period).mean()
 
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+    rs = avg_gain / avg_loss.replace(0, float("nan"))
+    result = 100 - (100 / (1 + rs))
+    # When avg_loss is zero (all gains), RSI should be 100.
+    result = result.fillna(100.0)
+    return result
 
 
 def ema(df: pd.DataFrame, span: int = 50, column: str = "Close") -> pd.Series:
