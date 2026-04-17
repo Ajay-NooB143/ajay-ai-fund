@@ -13,3 +13,4 @@ stable-baselines3
 gym
 psycopg2-binary
 yfinance
+langgraph-checkpoint>=2.0.0
