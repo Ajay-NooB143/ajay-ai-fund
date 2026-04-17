@@ -132,6 +132,16 @@ class TestGetLatestVersion:
             svc.get_latest_version("empty")
 
 
+class TestGetSaver:
+    def test_get_saver_returns_in_memory_saver(self, svc):
+        from langgraph.checkpoint.memory import InMemorySaver
+        saver = svc.get_saver()
+        assert isinstance(saver, InMemorySaver)
+
+    def test_get_saver_returns_same_instance(self, svc):
+        assert svc.get_saver() is svc.get_saver()
+
+
 # ---------------------------------------------------------------------------
 # Flask blueprint
 # ---------------------------------------------------------------------------

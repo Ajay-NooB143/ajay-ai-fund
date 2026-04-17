@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
+from langgraph.checkpoint.memory import InMemorySaver
 
 # ---------------------------------------------------------------------------
 # Default storage directory
@@ -50,6 +51,25 @@ class CheckpointerService:
         )
         self._version_lock = threading.Lock()
         self._last_version = 0
+        self.saver = InMemorySaver()
+
+    def get_saver(self):
+        """Return a LangGraph-compatible ``BaseCheckpointSaver``.
+
+        LangGraph's ``workflow.compile(checkpointer=...)`` requires an
+        instance of ``BaseCheckpointSaver``.  This wrapper is **not** a
+        ``BaseCheckpointSaver`` itself, so pass ``get_saver()`` instead::
+
+            manager = CheckpointerService()
+            graph = workflow.compile(checkpointer=manager.get_saver())
+
+        .. note::
+
+           The returned ``InMemorySaver`` manages LangGraph **graph
+           execution state** independently of the file-based model
+           checkpoints stored by the other methods on this class.
+        """
+        return self.saver
 
     # -- helpers -------------------------------------------------------------
 
