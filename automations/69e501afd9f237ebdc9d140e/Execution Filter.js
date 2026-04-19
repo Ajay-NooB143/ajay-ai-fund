@@ -35,6 +35,25 @@
     }
     setContext("execution_filter_result", result)
     console.log("[step] Execution Filter: Result=", result)
+
+    // ---- AI SIGNAL STUB INJECTION ----
+    // For demo/testing: produce a static AI signal for each asset and set in context. Replace later with real model inference.
+    const ai_signal = {
+      gold: "BUY", // DEMO: Change to "SELL", "NEUTRAL", etc as needed
+      usdjpy: "SELL" // DEMO: Change as needed
+    }
+    setContext("ai_signal", ai_signal)
+    console.log("[step] AI Signal STUB injected in context:", ai_signal)
+    // ---- END AI SIGNAL STUB ----
+
+    // ---- ORDERBOOK SIGNAL STUB INJECTION ----
+    const orderbook_signal = {
+      gold: gold.pressure || "NEUTRAL",
+      usdjpy: usdjpy.signal || "NO_CHANGE"
+    }
+    setContext("orderbook_signal", orderbook_signal)
+    console.log("[Execution Filter] Injected stub orderbook_signal:", orderbook_signal)
+    // ---- END ORDERBOOK SIGNAL STUB ----
   } catch (e) {
     console.error("[step] Error in Execution Filter:", e)
     process.exit(1)

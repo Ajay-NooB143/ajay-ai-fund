@@ -1,20 +1,9 @@
 {
   "automationId": "69e501afd9f237ebdc9d140e",
   "automationName": "Unnamed Automation",
-  "version": "v4",
+  "version": "v5",
   "mode": "multi-file",
-  "dependencies": [
-    {
-      "id": "1776621610120_2",
-      "name": "metalpriceapi",
-      "version": "latest"
-    },
-    {
-      "id": "1776621610120_3",
-      "name": "dayjs",
-      "version": "latest"
-    }
-  ],
+  "dependencies": [],
   "environmentVariables": [],
-  "syncedAt": "2026-04-19T18:15:23.591Z"
+  "syncedAt": "2026-04-19T18:20:04.678Z"
 }
