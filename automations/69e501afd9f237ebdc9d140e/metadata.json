@@ -1,0 +1,28 @@
+{
+  "automationId": "69e501afd9f237ebdc9d140e",
+  "automationName": "Unnamed Automation",
+  "version": "v1",
+  "mode": "multi-file",
+  "dependencies": [
+    {
+      "id": "1776616821739_2",
+      "name": "metalpriceapi",
+      "version": "latest"
+    },
+    {
+      "id": "1776616821739_3",
+      "name": "dayjs",
+      "version": "latest"
+    }
+  ],
+  "environmentVariables": [
+    {
+      "name": "METALPRICEAPI_KEY",
+      "source": "ai",
+      "id": "1776621384713_1",
+      "category": "api-credential",
+      "groupId": "metalpriceapi"
+    }
+  ],
+  "syncedAt": "2026-04-19T17:57:37.302Z"
+}
