@@ -1,7 +1,7 @@
 {
   "automationId": "69e501afd9f237ebdc9d140e",
   "automationName": "Unnamed Automation",
-  "version": "v3",
+  "version": "v4",
   "mode": "multi-file",
   "dependencies": [
     {
@@ -15,14 +15,6 @@
       "version": "latest"
     }
   ],
-  "environmentVariables": [
-    {
-      "name": "METALPRICEAPI_KEY",
-      "source": "ai",
-      "id": "1776621610120_1",
-      "category": "api-credential",
-      "groupId": "metalpriceapi"
-    }
-  ],
-  "syncedAt": "2026-04-19T18:08:07.463Z"
+  "environmentVariables": [],
+  "syncedAt": "2026-04-19T18:15:23.591Z"
 }
