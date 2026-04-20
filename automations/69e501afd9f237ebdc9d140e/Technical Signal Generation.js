@@ -1,6 +1,16 @@
 const fs = require("fs")
 const Papa = require("papaparse")
 
+// -- EMA function (user-supplied) --
+function EMA(prices, period) {
+  const k = 2 / (period + 1)
+  let ema = prices[0]
+  return prices.map(price => {
+    ema = price * k + ema * (1 - k)
+    return ema
+  })
+}
+
 ;(async () => {
   try {
     // 1. Validate and read environment variable for OHLCV CSV path
@@ -41,6 +51,33 @@ const Papa = require("papaparse")
       }
       return row
     })
+
+    // --- EMA Integration ----
+    // Choose EMA period: from env or default to 14
+    let emaPeriod = 14
+    if (process.env.EMA_PERIOD && !isNaN(Number(process.env.EMA_PERIOD))) {
+      emaPeriod = Number(process.env.EMA_PERIOD)
+      if (emaPeriod < 1) emaPeriod = 1
+    }
+    const closeArray = df.map(row => row.close)
+    // Handle edge case if length < period
+    let emaArray = []
+    if (df.length < emaPeriod) {
+      emaArray = Array(df.length).fill(null)
+    } else {
+      // Pad first (emaPeriod-1) with null, then apply EMA function
+      emaArray = Array(emaPeriod - 1)
+        .fill(null)
+        .concat(EMA(closeArray.slice(emaPeriod - 1), emaPeriod))
+    }
+    // Store EMA in dataframe
+    df.forEach((row, idx) => {
+      row.ema = emaArray[idx]
+    })
+    // Log first 5 EMA values for traceability
+    console.log(`EMA Period: ${emaPeriod}`)
+    console.log("First 5 EMA values:", emaArray.slice(0, 5))
+    // --- End EMA Integration ----
 
     // VWAP calculation
     let cumulativePV = 0,
@@ -111,6 +148,14 @@ const Papa = require("papaparse")
           tp,
           index: i
         })
+      }
+      // EMA simple signal (optional): BUY if close > ema, SELL if close < ema (log only)
+      if (row.ema !== null && !isNaN(row.ema)) {
+        if (row.close > row.ema) {
+          console.log(`[EMA] Index ${i}: BUY signal - close (${row.close}) > ema (${row.ema})`)
+        } else if (row.close < row.ema) {
+          console.log(`[EMA] Index ${i}: SELL signal - close (${row.close}) < ema (${row.ema})`)
+        }
       }
     }
 
