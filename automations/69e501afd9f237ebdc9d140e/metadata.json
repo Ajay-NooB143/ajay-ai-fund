@@ -1,21 +1,21 @@
 {
   "automationId": "69e501afd9f237ebdc9d140e",
   "automationName": "Unnamed Automation",
-  "version": "v11",
+  "version": "v12",
   "mode": "multi-file",
   "dependencies": [
     {
-      "id": "1776666859672_7",
+      "id": "1776667215558_9",
       "name": "axios",
       "version": "latest"
     },
     {
-      "id": "1776666859672_8",
+      "id": "1776667215558_10",
       "name": "fs",
       "version": "latest"
     },
     {
-      "id": "1776666859672_9",
+      "id": "1776667215558_11",
       "name": "papaparse",
       "version": "latest"
     }
@@ -24,51 +24,57 @@
     {
       "name": "BINANCE_SYMBOL",
       "source": "ai",
-      "id": "1776667215557_1",
+      "id": "1776667405744_1",
       "category": "input"
     },
     {
       "name": "BINANCE_INTERVAL",
       "source": "ai",
-      "id": "1776667215557_2",
+      "id": "1776667405744_2",
       "category": "input"
     },
     {
       "name": "BINANCE_LIMIT",
       "source": "ai",
-      "id": "1776667215557_3",
+      "id": "1776667405744_3",
       "category": "input"
     },
     {
       "name": "OHLCV_CSV_PATH",
       "source": "ai",
-      "id": "1776667215557_4",
+      "id": "1776667405744_4",
       "category": "input"
     },
     {
       "name": "ALPHAVANTAGE_API_KEY",
       "source": "ai",
-      "id": "1776667215557_5",
+      "id": "1776667405744_5",
       "category": "input"
     },
     {
       "name": "EMA_PERIOD",
       "source": "ai",
-      "id": "1776667215557_6",
+      "id": "1776667405744_6",
       "category": "input"
     },
     {
       "name": "EMA_FAST_PERIOD",
       "source": "ai",
-      "id": "1776667215557_7",
+      "id": "1776667405744_7",
       "category": "input"
     },
     {
       "name": "EMA_SLOW_PERIOD",
       "source": "ai",
-      "id": "1776667215557_8",
+      "id": "1776667405744_8",
+      "category": "input"
+    },
+    {
+      "name": "RSI_PERIOD",
+      "source": "ai",
+      "id": "1776667405744_9",
       "category": "input"
     }
   ],
-  "syncedAt": "2026-04-20T06:41:44.773Z"
+  "syncedAt": "2026-04-20T06:47:18.401Z"
 }
