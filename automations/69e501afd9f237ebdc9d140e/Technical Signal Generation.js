@@ -53,31 +53,66 @@ function EMA(prices, period) {
     })
 
     // --- EMA Integration ----
-    // Choose EMA period: from env or default to 14
+    // Single EMA (legacy)
     let emaPeriod = 14
     if (process.env.EMA_PERIOD && !isNaN(Number(process.env.EMA_PERIOD))) {
       emaPeriod = Number(process.env.EMA_PERIOD)
       if (emaPeriod < 1) emaPeriod = 1
     }
     const closeArray = df.map(row => row.close)
-    // Handle edge case if length < period
     let emaArray = []
     if (df.length < emaPeriod) {
       emaArray = Array(df.length).fill(null)
     } else {
-      // Pad first (emaPeriod-1) with null, then apply EMA function
       emaArray = Array(emaPeriod - 1)
         .fill(null)
         .concat(EMA(closeArray.slice(emaPeriod - 1), emaPeriod))
     }
-    // Store EMA in dataframe
     df.forEach((row, idx) => {
       row.ema = emaArray[idx]
     })
-    // Log first 5 EMA values for traceability
     console.log(`EMA Period: ${emaPeriod}`)
     console.log("First 5 EMA values:", emaArray.slice(0, 5))
-    // --- End EMA Integration ----
+    // --- End single EMA ----
+
+    // --- Dual EMA integration ----
+    let emaFastPeriod = 9 // Default
+    let emaSlowPeriod = 21 // Default
+    if (process.env.EMA_FAST_PERIOD && !isNaN(Number(process.env.EMA_FAST_PERIOD))) {
+      emaFastPeriod = Math.max(1, Number(process.env.EMA_FAST_PERIOD))
+    }
+    if (process.env.EMA_SLOW_PERIOD && !isNaN(Number(process.env.EMA_SLOW_PERIOD))) {
+      emaSlowPeriod = Math.max(1, Number(process.env.EMA_SLOW_PERIOD))
+    }
+    // Calculate EMA_fast
+    let emaFastArray = []
+    if (df.length < emaFastPeriod) {
+      emaFastArray = Array(df.length).fill(null)
+    } else {
+      emaFastArray = Array(emaFastPeriod - 1)
+        .fill(null)
+        .concat(EMA(closeArray.slice(emaFastPeriod - 1), emaFastPeriod))
+    }
+    // Calculate EMA_slow
+    let emaSlowArray = []
+    if (df.length < emaSlowPeriod) {
+      emaSlowArray = Array(df.length).fill(null)
+    } else {
+      emaSlowArray = Array(emaSlowPeriod - 1)
+        .fill(null)
+        .concat(EMA(closeArray.slice(emaSlowPeriod - 1), emaSlowPeriod))
+    }
+    // Assign both EMAs to dataframe
+    df.forEach((row, idx) => {
+      row.ema_fast = emaFastArray[idx]
+      row.ema_slow = emaSlowArray[idx]
+    })
+    console.log(`EMA_fast Period: ${emaFastPeriod}, EMA_slow Period: ${emaSlowPeriod}`)
+    if (df.length >= 5) {
+      console.log("First 5 EMA_fast:", emaFastArray.slice(0, 5))
+      console.log("First 5 EMA_slow:", emaSlowArray.slice(0, 5))
+    }
+    // --- End Dual EMA integration ----
 
     // VWAP calculation
     let cumulativePV = 0,
@@ -94,7 +129,6 @@ function EMA(prices, period) {
       df[i].fvg_up = df[i - 1].low > df[i - 2].high ? 1 : 0
       df[i].fvg_down = df[i - 1].high < df[i - 2].low ? 1 : 0
     }
-    // fill first two
     if (df.length >= 2) {
       df[0].fvg_up = df[0].fvg_down = df[1].fvg_up = df[1].fvg_down = 0
     }
@@ -158,14 +192,31 @@ function EMA(prices, period) {
         }
       }
     }
-
-    // Output the signals for debug purposes
+    // ---- Dual EMA crossover signals ----
+    const emaCrossoverSignals = []
+    for (let i = 0; i < df.length; i++) {
+      const row = df[i]
+      // Only assign signal when both EMAs are defined and valid
+      if (row.ema_fast !== null && row.ema_slow !== null && !isNaN(row.ema_fast) && !isNaN(row.ema_slow)) {
+        const type = row.ema_fast > row.ema_slow ? "BUY" : "SELL"
+        emaCrossoverSignals.push({
+          type,
+          index: i,
+          ema_fast: row.ema_fast,
+          ema_slow: row.ema_slow,
+          close: row.close
+        })
+        console.log(`[Dual EMA XOVER] Index ${i}: ${type} - fast (${row.ema_fast}), slow (${row.ema_slow}), close (${row.close})`)
+      }
+    }
+    // Output the legacy and new signals for debug purposes
     for (const s of signals) {
       console.log(s)
     }
-    // Store signals in context for downstream
+    console.log(`Dual EMA crossover signals generated: ${emaCrossoverSignals.length}`)
     setContext("signals", signals)
-    console.log(`Technical Signal Generation step complete. Signals generated: ${signals.length}`)
+    setContext("emaCrossoverSignals", emaCrossoverSignals)
+    console.log(`Technical Signal Generation step complete. Composite: ${signals.length}, Dual EMA: ${emaCrossoverSignals.length}`)
   } catch (e) {
     console.error("Technical Signal Generation error:", e)
     process.exit(1)

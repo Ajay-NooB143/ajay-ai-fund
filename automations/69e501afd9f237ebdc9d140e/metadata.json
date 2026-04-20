@@ -1,21 +1,21 @@
 {
   "automationId": "69e501afd9f237ebdc9d140e",
   "automationName": "Unnamed Automation",
-  "version": "v10",
+  "version": "v11",
   "mode": "multi-file",
   "dependencies": [
     {
-      "id": "1776666163917_6",
+      "id": "1776666859672_7",
       "name": "axios",
       "version": "latest"
     },
     {
-      "id": "1776666163917_7",
+      "id": "1776666859672_8",
       "name": "fs",
       "version": "latest"
     },
     {
-      "id": "1776666163917_8",
+      "id": "1776666859672_9",
       "name": "papaparse",
       "version": "latest"
     }
@@ -24,39 +24,51 @@
     {
       "name": "BINANCE_SYMBOL",
       "source": "ai",
-      "id": "1776666859672_1",
+      "id": "1776667215557_1",
       "category": "input"
     },
     {
       "name": "BINANCE_INTERVAL",
       "source": "ai",
-      "id": "1776666859672_2",
+      "id": "1776667215557_2",
       "category": "input"
     },
     {
       "name": "BINANCE_LIMIT",
       "source": "ai",
-      "id": "1776666859672_3",
+      "id": "1776667215557_3",
       "category": "input"
     },
     {
       "name": "OHLCV_CSV_PATH",
       "source": "ai",
-      "id": "1776666859672_4",
+      "id": "1776667215557_4",
       "category": "input"
     },
     {
       "name": "ALPHAVANTAGE_API_KEY",
       "source": "ai",
-      "id": "1776666859672_5",
+      "id": "1776667215557_5",
       "category": "input"
     },
     {
       "name": "EMA_PERIOD",
       "source": "ai",
-      "id": "1776666859672_6",
+      "id": "1776667215557_6",
+      "category": "input"
+    },
+    {
+      "name": "EMA_FAST_PERIOD",
+      "source": "ai",
+      "id": "1776667215557_7",
+      "category": "input"
+    },
+    {
+      "name": "EMA_SLOW_PERIOD",
+      "source": "ai",
+      "id": "1776667215557_8",
       "category": "input"
     }
   ],
-  "syncedAt": "2026-04-20T06:38:22.376Z"
+  "syncedAt": "2026-04-20T06:41:44.773Z"
 }
