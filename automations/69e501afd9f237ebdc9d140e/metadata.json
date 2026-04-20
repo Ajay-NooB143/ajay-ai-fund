@@ -1,9 +1,22 @@
 {
   "automationId": "69e501afd9f237ebdc9d140e",
   "automationName": "Unnamed Automation",
-  "version": "v5",
+  "version": "v6",
   "mode": "multi-file",
   "dependencies": [],
-  "environmentVariables": [],
-  "syncedAt": "2026-04-19T18:20:04.678Z"
+  "environmentVariables": [
+    {
+      "name": "OHLCV_CSV_PATH",
+      "source": "ai",
+      "id": "1776658392707_1",
+      "category": "input"
+    },
+    {
+      "name": "",
+      "id": "1776659144773",
+      "source": "user",
+      "category": "input"
+    }
+  ],
+  "syncedAt": "2026-04-20T04:28:42.814Z"
 }
