@@ -1,22 +1,50 @@
 {
   "automationId": "69e501afd9f237ebdc9d140e",
   "automationName": "Unnamed Automation",
-  "version": "v6",
+  "version": "v7",
   "mode": "multi-file",
-  "dependencies": [],
+  "dependencies": [
+    {
+      "id": "1776662391341_5",
+      "name": "axios",
+      "version": "latest"
+    },
+    {
+      "id": "1776662391341_6",
+      "name": "fs",
+      "version": "latest"
+    },
+    {
+      "id": "1776662391341_7",
+      "name": "papaparse",
+      "version": "latest"
+    }
+  ],
   "environmentVariables": [
     {
-      "name": "OHLCV_CSV_PATH",
+      "name": "BINANCE_SYMBOL",
       "source": "ai",
-      "id": "1776658392707_1",
+      "id": "1776662391341_1",
       "category": "input"
     },
     {
-      "name": "",
-      "id": "1776659144773",
-      "source": "user",
+      "name": "BINANCE_INTERVAL",
+      "source": "ai",
+      "id": "1776662391341_2",
+      "category": "input"
+    },
+    {
+      "name": "BINANCE_LIMIT",
+      "source": "ai",
+      "id": "1776662391341_3",
+      "category": "input"
+    },
+    {
+      "name": "OHLCV_CSV_PATH",
+      "source": "ai",
+      "id": "1776662391341_4",
       "category": "input"
     }
   ],
-  "syncedAt": "2026-04-20T04:28:42.814Z"
+  "syncedAt": "2026-04-20T05:30:32.791Z"
 }
