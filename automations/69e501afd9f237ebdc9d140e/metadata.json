@@ -1,21 +1,21 @@
 {
   "automationId": "69e501afd9f237ebdc9d140e",
   "automationName": "Unnamed Automation",
-  "version": "v7",
+  "version": "v8",
   "mode": "multi-file",
   "dependencies": [
     {
-      "id": "1776662391341_5",
+      "id": "1776663261949_5",
       "name": "axios",
       "version": "latest"
     },
     {
-      "id": "1776662391341_6",
+      "id": "1776663261949_6",
       "name": "fs",
       "version": "latest"
     },
     {
-      "id": "1776662391341_7",
+      "id": "1776663261949_7",
       "name": "papaparse",
       "version": "latest"
     }
@@ -24,27 +24,27 @@
     {
       "name": "BINANCE_SYMBOL",
       "source": "ai",
-      "id": "1776662391341_1",
+      "id": "1776665974632_1",
       "category": "input"
     },
     {
       "name": "BINANCE_INTERVAL",
       "source": "ai",
-      "id": "1776662391341_2",
+      "id": "1776665974632_2",
       "category": "input"
     },
     {
       "name": "BINANCE_LIMIT",
       "source": "ai",
-      "id": "1776662391341_3",
+      "id": "1776665974632_3",
       "category": "input"
     },
     {
       "name": "OHLCV_CSV_PATH",
       "source": "ai",
-      "id": "1776662391341_4",
+      "id": "1776665974632_4",
       "category": "input"
     }
   ],
-  "syncedAt": "2026-04-20T05:30:32.791Z"
+  "syncedAt": "2026-04-20T06:20:33.260Z"
 }
