@@ -43,6 +43,43 @@ function EMA(closes, period) {
   return emas
 }
 
+// === MACD Calculation ===
+function MACD(closes, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
+  const emaFast = EMA(closes, fastPeriod)
+  const emaSlow = EMA(closes, slowPeriod)
+  let macd = Array(closes.length).fill(null)
+  for (let i = 0; i < closes.length; i++) {
+    if (emaFast[i] !== null && emaSlow[i] !== null) {
+      macd[i] = emaFast[i] - emaSlow[i]
+    } else {
+      macd[i] = null
+    }
+  }
+  const macdValid = macd.map(v => (v !== null ? v : 0))
+  const signal = EMA(macdValid, signalPeriod)
+  return { macd, signal }
+}
+
+// === Support/Resistance Detection ===
+function detectLevels(df) {
+  let levels = []
+  for (let i = 2; i < df.length - 2; i++) {
+    const low = df[i].low
+    const prevLow = df[i - 1].low
+    const nextLow = df[i + 1].low
+    const high = df[i].high
+    const prevHigh = df[i - 1].high
+    const nextHigh = df[i + 1].high
+    if (low < prevLow && low < nextLow) {
+      levels.push({ type: "support", value: low, idx: i })
+    }
+    if (high > prevHigh && high > nextHigh) {
+      levels.push({ type: "resistance", value: high, idx: i })
+    }
+  }
+  return levels
+}
+
 ;(async () => {
   try {
     // === [NEW CODE] Read and parse OHLCV CSV before any signal calculation ===
@@ -79,6 +116,7 @@ function EMA(closes, period) {
     console.log(`Parsed OHLCV: ${ohlcvArray.length} rows from '${ohlcvPath}'`)
 
     const df = ohlcvArray // parsed data array
+    const closes = df.map(row => row.close)
 
     // RSI Calculation
     let rsiPeriod = 14
@@ -89,10 +127,7 @@ function EMA(closes, period) {
     if (df.length < rsiPeriod + 1) {
       rsiArray = Array(df.length).fill(null)
     } else {
-      rsiArray = RSI(
-        df.map(row => row.close),
-        rsiPeriod
-      )
+      rsiArray = RSI(closes, rsiPeriod)
     }
     df.forEach((row, idx) => {
       row.rsi = rsiArray[idx]
@@ -100,49 +135,54 @@ function EMA(closes, period) {
     console.log(`RSI Period: ${rsiPeriod}`)
     console.log("First 10 RSI values:", rsiArray.slice(0, 10))
 
-    // --- EMA Calculation ---
-    let emaPeriod = 14
-    if (process.env.EMA_PERIOD && !isNaN(Number(process.env.EMA_PERIOD))) {
-      emaPeriod = Math.max(1, Number(process.env.EMA_PERIOD))
-    }
-    let emaArray = []
-    if (df.length < emaPeriod) {
-      emaArray = Array(df.length).fill(null)
-    } else {
-      emaArray = EMA(
-        df.map(row => row.close),
-        emaPeriod
-      )
-    }
+    // --- EMA20 and EMA50 Calculation ---
+    let ema20 = EMA(closes, 20)
+    let ema50 = EMA(closes, 50)
     df.forEach((row, idx) => {
-      row.ema = emaArray[idx]
+      row.ema20 = ema20[idx]
+      row.ema50 = ema50[idx]
     })
-    console.log(`EMA Period: ${emaPeriod}`)
-    console.log("First 10 EMA:", emaArray.slice(0, 10))
+    console.log("EMA20/EMA50 calculated. First few:", ema20.slice(0, 5), ema50.slice(0, 5))
 
-    // --- Signal assignment as per user request ---
+    // --- MACD Calculation ---
+    let { macd, signal } = MACD(closes, 12, 26, 9)
+    df.forEach((row, idx) => {
+      row.macd = macd[idx]
+      row.signal = signal[idx]
+    })
+    console.log("MACD & Signal lines calculated. Last 5 values:", macd.slice(-5), signal.slice(-5))
+
+    // --- Support/Resistance Level Detection ---
+    const levels = detectLevels(df)
+    console.log(`Support/Resistance levels detected: ${levels.length}`)
+
+    // --- Signal assignment as per user request logic: BUY if ema20 > ema50 & rsi > 50 & macd > signal
+    // SELL if ema20 < ema50 & rsi < 50 & macd < signal ---
     let buyCount = 0,
       sellCount = 0,
       holdCount = 0
     df.forEach(row => {
-      row.signal = null
-      if (row.ema !== null && !isNaN(row.ema) && row.rsi !== null && !isNaN(row.rsi) && row.close !== null && !isNaN(row.close)) {
-        if (row.close > row.ema && row.rsi < 30) {
-          row.signal = "BUY"
+      row.BUY = false
+      row.SELL = false
+      if (row.ema20 !== null && row.ema50 !== null && row.macd !== null && row.signal !== null && row.rsi !== null && !isNaN(row.ema20) && !isNaN(row.ema50) && !isNaN(row.macd) && !isNaN(row.signal) && !isNaN(row.rsi)) {
+        if (row.ema20 > row.ema50 && row.rsi > 50 && row.macd > row.signal) {
+          row.BUY = true
           buyCount++
-        } else if (row.close < row.ema && row.rsi > 70) {
-          row.signal = "SELL"
+        } else if (row.ema20 < row.ema50 && row.rsi < 50 && row.macd < row.signal) {
+          row.SELL = true
           sellCount++
         } else {
-          row.signal = "HOLD"
           holdCount++
         }
       }
     })
     console.log(`Signal assignment complete. BUY: ${buyCount}, SELL: ${sellCount}, HOLD/Other: ${holdCount}`)
 
-    setContext("technical_signals", df)
-    console.log("technical_signals context set with full indicator results.")
+    setContext("technical_signals", {
+      indicators: df,
+      support_resistance: levels
+    })
+    console.log("technical_signals context set with full enriched results.")
   } catch (e) {
     console.error("Technical Signal Generation error:", e)
     process.exit(1)
