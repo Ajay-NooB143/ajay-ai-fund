@@ -1,50 +1,67 @@
-// Final Decision Gating - Implements score-based gating based on ai_signal, orderflow, orderbook
+// Final Decision Gating - Weighted (confidence-based) aggregation of AI and Orderbook signals per asset
 try {
-  // Fetch context: AI signals, orderflow analytics, orderbook signal
-  const aiSignals = getContext("ai_signal") || { gold: "BUY", usdjpy: "SELL" }
-  const orderflow = getContext("orderflow_analytics")
-  if (!orderflow) throw new Error("Missing 'orderflow_analytics' in context.")
+  // Fetch context: AI & Orderbook signals, each expected as { asset: { signal: 'BUY'/'SELL', confidence: number }, ... }
+  const aiSignals = getContext("ai_signal") || {}
+  const orderbookSignals = getContext("orderbook_signal") || {}
 
-  let orderbook = getContext("orderbook_signal")
-  if (!orderbook) {
-    orderbook = {
-      gold: orderflow.gold.pressure || "NEUTRAL",
-      usdjpy: orderflow.usdjpy.signal || "NO_CHANGE"
-    }
-    console.warn("[Final Decision Gating] No orderbook_signal in context, using fallback pressure/signals.")
-  }
+  // Defensive: Asset set = union of assets with both AI & Orderbook entries
+  const allAssets = Array.from(new Set([...Object.keys(aiSignals), ...Object.keys(orderbookSignals)]))
 
-  // Map signal string to +1/-1, otherwise 0
-  function signalToNum(signal) {
-    if (!signal || typeof signal !== "string") return 0
-    const s = signal.toUpperCase()
-    if (s === "BUY") return 1
-    if (s === "SELL") return -1
-    return 0
-  }
-
-  // For each asset, sum the three signals
-  const assets = Object.keys(aiSignals).filter(a => orderflow[a] && orderbook[a])
   const results = {}
 
-  for (const asset of assets) {
+  for (const asset of allAssets) {
+    // Try to get signal+confidence structure. Fallback: if string, treat as simple signal w/ confidence = 1.
     const ai = aiSignals[asset]
-    const of = orderflow[asset]?.signal // orderflow step should pass a signal (BUY/SELL)
-    const ob = orderbook[asset]
+    const ob = orderbookSignals[asset]
 
-    const aiNum = signalToNum(ai)
-    const ofNum = signalToNum(of)
-    const obNum = signalToNum(ob)
-    const score = aiNum + ofNum + obNum
+    let aiSignal, aiConf
+    if (ai && typeof ai === "object" && ai.signal && typeof ai.confidence === "number") {
+      aiSignal = ai.signal.toUpperCase()
+      aiConf = ai.confidence
+    } else if (typeof ai === "string") {
+      aiSignal = ai.toUpperCase()
+      aiConf = 1
+    } else {
+      aiSignal = "HOLD"
+      aiConf = 0
+    }
 
-    let action = "FILTER"
-    if (score === 2 || score === 3) action = "BUY"
-    else if (score === -2 || score === -3) action = "SELL"
+    let obSignal, obConf
+    if (ob && typeof ob === "object" && ob.signal && typeof ob.confidence === "number") {
+      obSignal = ob.signal.toUpperCase()
+      obConf = ob.confidence
+    } else if (typeof ob === "string") {
+      obSignal = ob.toUpperCase()
+      obConf = 1
+    } else {
+      obSignal = "HOLD"
+      obConf = 0
+    }
 
-    // Emit log for traceability
-    console.log(`[Final Decision Gating][${asset}] Signals => AI: ${ai} (${aiNum}), Orderflow: ${of} (${ofNum}), Orderbook: ${ob} (${obNum}), Score: ${score}, ACTION: ${action}`)
+    // Aggregate: sum BUY confidence, SELL confidence
+    let buyScore = 0,
+      sellScore = 0
+    if (aiSignal === "BUY") buyScore += aiConf
+    else if (aiSignal === "SELL") sellScore += aiConf
+    if (obSignal === "BUY") buyScore += obConf
+    else if (obSignal === "SELL") sellScore += obConf
 
-    results[asset] = action
+    // Decision logic
+    let action
+    if (buyScore > sellScore) action = "BUY"
+    else if (sellScore > buyScore) action = "SELL"
+    else action = "HOLD"
+
+    // Detailed diagnostic logging
+    console.log(`[Final Decision Gating][${asset}] AI: ${aiSignal} (${aiConf}), Orderbook: ${obSignal} (${obConf}) | BUY score: ${buyScore}, SELL score: ${sellScore} => ACTION: ${action}`)
+
+    results[asset] = {
+      action,
+      ai: { signal: aiSignal, confidence: aiConf },
+      orderbook: { signal: obSignal, confidence: obConf },
+      buyScore,
+      sellScore
+    }
   }
 
   setContext("final_decision", results)
