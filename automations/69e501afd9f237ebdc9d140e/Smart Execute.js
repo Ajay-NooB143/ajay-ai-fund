@@ -1,7 +1,7 @@
-// This step performs smart order execution: splits trades into multiple parts, applies delays, and simulates orders (stub).
+// This step performs smart order execution: splits trades into multiple parts, applies delays, and simulates orders (stub). Now supports adaptive position size via scaling factor.
 try {
   // --- Configurable params ---
-  const LOT_SIZE = 10 // Example: size per asset (could use context/env in future)
+  const BASE_LOT_SIZE = 10 // Unscaled base size per asset
   const EXEC_PARTS = 5 // Split each order into this many parts
   const EXEC_DELAY_MS = 200 // Delay between parts in ms (Python: 0.2s)
 
@@ -19,12 +19,24 @@ try {
 
   for (const asset of assets) {
     const { symbol, readable, decision } = asset
+    if (!decision || typeof decision !== "object") {
+      console.log(`[Smart Execute] ${readable}: Missing final decision object, skipping.`)
+      continue
+    }
+    const { action, scale = 1.0, rationale } = decision
     // Only proceed for real trade signals (BUY or SELL)
-    if (decision === "BUY" || decision === "SELL") {
-      const splitLot = LOT_SIZE / EXEC_PARTS
-      console.log(`[Smart Execute] ${readable} Trade: ${decision}, Total Lot: ${LOT_SIZE}, Split: ${splitLot} x ${EXEC_PARTS}`)
+    if (action === "BUY" || action === "SELL") {
+      // Calculate scaled lot size; defensive: minimum 1, rounded to 4 decimals
+      const scaledLot = Math.max(1, +(BASE_LOT_SIZE * scale).toFixed(4))
+      const splitLot = +(scaledLot / EXEC_PARTS).toFixed(4)
+
+      // Log trade details and scaling rationale
+      console.log(`[Smart Execute] ${readable} Trade: ${action}, BASE_Lot: ${BASE_LOT_SIZE}, SCALE: ${scale}, Used Lot: ${scaledLot}, Split: ${splitLot} x ${EXEC_PARTS}`)
+      if (typeof rationale === "string") {
+        console.log(`[Smart Execute] Scaling rationale: ${rationale}`)
+      }
       for (let i = 0; i < EXEC_PARTS; i++) {
-        safe_order(symbol, splitLot, decision, i + 1)
+        safe_order(symbol, splitLot, action, i + 1)
         if (i < EXEC_PARTS - 1) {
           // Await between each part except last
           Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, EXEC_DELAY_MS) // Node.js 19+ compliant pause
@@ -32,7 +44,7 @@ try {
       }
     } else {
       // Log if blocked/filtered/hold
-      console.log(`[Smart Execute] ${readable}: No eligible trade (decision = ${decision})`)
+      console.log(`[Smart Execute] ${readable}: No eligible trade (decision = ${action})`)
     }
   }
 

@@ -1,4 +1,4 @@
-// Final Decision Gating - Weighted (confidence-based) aggregation of AI and Orderbook signals per asset
+// Final Decision Gating - Weighted (confidence-based) aggregation of AI and Orderbook signals per asset, with adaptive scaling
 try {
   // Fetch context: AI & Orderbook signals, each expected as { asset: { signal: 'BUY'/'SELL', confidence: number }, ... }
   const aiSignals = getContext("ai_signal") || {}
@@ -52,20 +52,33 @@ try {
     else if (sellScore > buyScore) action = "SELL"
     else action = "HOLD"
 
-    // Detailed diagnostic logging
-    console.log(`[Final Decision Gating][${asset}] AI: ${aiSignal} (${aiConf}), Orderbook: ${obSignal} (${obConf}) | BUY score: ${buyScore}, SELL score: ${sellScore} => ACTION: ${action}`)
+    // Calculate scaling factor for this asset
+    // If a key signal (here: Orderbook) is missing/conf=0, reduce scale, otherwise full size
+    let rationale, scale
+    if (obConf === 0 || obSignal === "HOLD" || obSignal === "MISSING") {
+      scale = 0.5
+      rationale = "Orderbook signal missing or weak: executing smaller position (scale=0.5)"
+    } else {
+      scale = 1.0
+      rationale = "All key signals present: executing full position (scale=1.0)"
+    }
+
+    // Detailed diagnostic logging, with rationale
+    console.log(`[Final Decision Gating][${asset}] AI: ${aiSignal} (${aiConf}), Orderbook: ${obSignal} (${obConf}) | BUY score: ${buyScore}, SELL score: ${sellScore} => ACTION: ${action} | SCALE: ${scale} (${rationale})`)
 
     results[asset] = {
       action,
       ai: { signal: aiSignal, confidence: aiConf },
       orderbook: { signal: obSignal, confidence: obConf },
       buyScore,
-      sellScore
+      sellScore,
+      scale, // Propagate the scaling factor
+      rationale // Propagate rationale for transparency
     }
   }
 
   setContext("final_decision", results)
-  console.log("[Final Decision Gating] FINAL DECISIONS:", results)
+  console.log("[Final Decision Gating] FINAL DECISIONS (with scale):", results)
 } catch (e) {
   console.error("[Final Decision Gating] Error:", e)
   process.exit(1)
