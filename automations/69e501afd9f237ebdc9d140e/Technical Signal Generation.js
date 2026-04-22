@@ -2,7 +2,6 @@ const fs = require("fs")
 const Papa = require("papaparse")
 
 // === (existing indicator/calculation functions remain here, but ensure RSI function is defined) ===
-// Example (make sure RSI function exists):
 function RSI(closes, period) {
   let rsis = Array(closes.length).fill(null)
   if (closes.length <= period) return rsis
@@ -27,6 +26,21 @@ function RSI(closes, period) {
     rsis[i] = 100 - 100 / (1 + rs)
   }
   return rsis
+}
+
+// === EMA Calculation ===
+function EMA(closes, period) {
+  let emas = Array(closes.length).fill(null)
+  if (closes.length < period) return emas
+  let multiplier = 2 / (period + 1)
+  // Simple average for first EMA value
+  let sum = 0
+  for (let i = 0; i < period; i++) sum += closes[i]
+  emas[period - 1] = sum / period
+  for (let i = period; i < closes.length; i++) {
+    emas[i] = (closes[i] - emas[i - 1]) * multiplier + emas[i - 1]
+  }
+  return emas
 }
 
 ;(async () => {
@@ -64,10 +78,9 @@ function RSI(closes, period) {
     })
     console.log(`Parsed OHLCV: ${ohlcvArray.length} rows from '${ohlcvPath}'`)
 
-    // == Existing logic follows, using ohlcvArray as intended ==
-    const df = ohlcvArray // <--- CRITICAL: df assigned after successful parse
+    const df = ohlcvArray // parsed data array
 
-    // === RSI Calculation (fix variable reference, ensure function defined) ===
+    // RSI Calculation
     let rsiPeriod = 14
     if (process.env.RSI_PERIOD && !isNaN(Number(process.env.RSI_PERIOD))) {
       rsiPeriod = Math.max(1, Number(process.env.RSI_PERIOD))
@@ -87,25 +100,49 @@ function RSI(closes, period) {
     console.log(`RSI Period: ${rsiPeriod}`)
     console.log("First 10 RSI values:", rsiArray.slice(0, 10))
 
-    // Optionally: Informational signal block (BUY if RSI < 30, SELL if > 70)
-    let rsiSignals = []
+    // --- EMA Calculation ---
+    let emaPeriod = 14
+    if (process.env.EMA_PERIOD && !isNaN(Number(process.env.EMA_PERIOD))) {
+      emaPeriod = Math.max(1, Number(process.env.EMA_PERIOD))
+    }
+    let emaArray = []
+    if (df.length < emaPeriod) {
+      emaArray = Array(df.length).fill(null)
+    } else {
+      emaArray = EMA(
+        df.map(row => row.close),
+        emaPeriod
+      )
+    }
+    df.forEach((row, idx) => {
+      row.ema = emaArray[idx]
+    })
+    console.log(`EMA Period: ${emaPeriod}`)
+    console.log("First 10 EMA:", emaArray.slice(0, 10))
+
+    // --- Signal assignment as per user request ---
     let buyCount = 0,
-      sellCount = 0
-    for (let i = 0; i < df.length; i++) {
-      const rsiVal = rsiArray[i]
-      if (rsiVal !== null && !isNaN(rsiVal)) {
-        if (rsiVal < 30) {
-          rsiSignals.push({ index: i, type: "BUY", rsi: rsiVal })
+      sellCount = 0,
+      holdCount = 0
+    df.forEach(row => {
+      row.signal = null
+      if (row.ema !== null && !isNaN(row.ema) && row.rsi !== null && !isNaN(row.rsi) && row.close !== null && !isNaN(row.close)) {
+        if (row.close > row.ema && row.rsi < 30) {
+          row.signal = "BUY"
           buyCount++
-        } else if (rsiVal > 70) {
-          rsiSignals.push({ index: i, type: "SELL", rsi: rsiVal })
+        } else if (row.close < row.ema && row.rsi > 70) {
+          row.signal = "SELL"
           sellCount++
+        } else {
+          row.signal = "HOLD"
+          holdCount++
         }
       }
-    }
-    console.log(`RSI signals: BUY (${buyCount}), SELL (${sellCount})`)
+    })
+    console.log(`Signal assignment complete. BUY: ${buyCount}, SELL: ${sellCount}, HOLD/Other: ${holdCount}`)
 
-    // ... (rest of your unchanged technical signal/ATR/EMA code follows here)
+    setContext("technical_signals", df)
+    console.log("technical_signals context set with full indicator results.")
   } catch (e) {
     console.error("Technical Signal Generation error:", e)
     process.exit(1)
