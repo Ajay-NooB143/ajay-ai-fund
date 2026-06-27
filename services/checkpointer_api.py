@@ -6,7 +6,6 @@ deleting model snapshots produced during training and retraining cycles.
 
 import json
 import os
-import pickle
 import threading
 import time
 from pathlib import Path
@@ -38,7 +37,7 @@ class CheckpointerService:
     Each checkpoint is stored as a pair of files under
     ``<checkpoint_dir>/<model_name>/``:
 
-    * ``<version>.pkl``  – serialised model data (pickle)
+    * ``<version>.json``  – serialised model data (JSON)
     * ``<version>.meta.json`` – human-readable metadata
     """
 
@@ -114,7 +113,7 @@ class CheckpointerService:
         version = str(timestamp_ms)
         model_dir = self._model_dir(model_name)
 
-        data_path = model_dir / f"{version}.pkl"
+        data_path = model_dir / f"{version}.json"
         meta_path = model_dir / f"{version}.meta.json"
 
         meta = {
@@ -124,8 +123,8 @@ class CheckpointerService:
             **(metadata or {}),
         }
 
-        with open(data_path, "wb") as fh:
-            pickle.dump(data, fh)
+        with open(data_path, "w") as fh:
+            json.dump(data, fh)
 
         with open(meta_path, "w") as fh:
             json.dump(meta, fh, indent=2)
@@ -156,14 +155,14 @@ class CheckpointerService:
         if version is None:
             version = self.get_latest_version(model_name)
 
-        data_path = self._model_dir(model_name) / f"{version}.pkl"
+        data_path = self._model_dir(model_name) / f"{version}.json"
         if not data_path.exists():
             raise FileNotFoundError(
                 f"Checkpoint {version} not found for model '{model_name}'"
             )
 
-        with open(data_path, "rb") as fh:
-            return pickle.load(fh)  # noqa: S301
+        with open(data_path, "r") as fh:
+            return json.load(fh)
 
     def get_metadata(self, model_name, version):
         """Return the metadata dict for a specific checkpoint."""
@@ -190,7 +189,7 @@ class CheckpointerService:
     def delete(self, model_name, version):
         """Remove a single checkpoint (data + metadata)."""
         model_dir = self._model_dir(model_name)
-        data_path = model_dir / f"{version}.pkl"
+        data_path = model_dir / f"{version}.json"
         meta_path = model_dir / f"{version}.meta.json"
 
         if not data_path.exists() and not meta_path.exists():
@@ -250,7 +249,7 @@ def save_checkpoint(model_name):
     """Save a new checkpoint for *model_name*.
 
     Expects JSON body with:
-    * ``data`` – the model state (stored as-is via pickle)
+    * ``data`` – the model state (stored as JSON)
     * ``metadata`` – (optional) extra info
     """
     body = request.get_json(force=True)
