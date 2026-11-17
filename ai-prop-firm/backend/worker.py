@@ -1,34 +1,25 @@
-"""Background worker that consumes trades from the Redis queue and
-forwards them to the MT5 executor."""
+"""Signals-only worker.
 
+Consumes legacy queued messages only to quarantine/report them. It never
+forwards messages to a broker or invokes an execution adapter.
+"""
 import time
 import traceback
 
 from trade_queue import TradeQueue
-from mt5_executor import MT5Executor
 
 trade_queue = TradeQueue()
-executor = MT5Executor()
 
 
 def run_worker() -> None:
-    """Continuously pull trades from the queue and execute them."""
-    print("[worker] Trade worker started")
+    print("[worker] signals-only quarantine worker started")
     while True:
         try:
-            trade = trade_queue.dequeue()
-            if trade is None:
+            signal = trade_queue.dequeue()
+            if signal is None:
                 continue
-
-            print(f"[worker] Processing trade: {trade}")
-            result = executor.execute(
-                symbol=trade["symbol"],
-                side=trade["side"],
-                volume=trade["volume"],
-                price=trade.get("price", 0.0),
-                comment=trade.get("comment", ""),
-            )
-            print(f"[worker] Result: {result}")
+            # Do not log full payloads: they may contain private metadata.
+            print("[worker] blocked queued trade: signals_only_mode")
         except Exception:
             traceback.print_exc()
             time.sleep(1)
