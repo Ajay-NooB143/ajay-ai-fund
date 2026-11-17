@@ -29,7 +29,7 @@ class RiskManager:
             return False
         if side not in ("BUY", "SELL"):
             return False
-        return not self.is_daily_limit_breached(1.0) if self.daily_loss > 0 else True
+        # Balance is not supplied here, so do not guess a denominator.\n        # Call is_daily_limit_breached(balance) at the account-aware layer.\n        return True
 
     def record_loss(self, amount: float) -> None:
         amount = float(amount)
